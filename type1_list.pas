@@ -54,8 +54,7 @@ procedure type1_list_intersect_box (   {find object/box intersection status}
 
 procedure type1_list_add_child (       {Add child to this object}
   in      aggr_obj: ray_object_t;      {the object to add child to}
-  in      object: ray_object_t;        {the object to add}
-  in      parms: univ integer32);      {unused optional parameters}
+  var     object: ray_object_t);       {the object to add}
   val_param; forward;
 
 procedure type1_list_version (         {return version information about object}
@@ -123,7 +122,7 @@ begin
 {
 ****************************************************************************
 *
-*   Local subroutine TYPE1_LIST_CREATE (OBJECT, DATA, STATUS)
+*   Local subroutine TYPE1_LIST_CREATE (OBJECT, DATA, STAT)
 *
 *   Fill in the new object in OBJECT.  DATA is the user data parameters for
 *   this object.  STATUS is the standard system error return code.
@@ -301,12 +300,11 @@ obj_loop:                              {back here each new child pointer}
 {
 ****************************************************************************
 *
-*   Local subroutine TYPE1_LIST_ADD_CHILD (AGGR_OBJ, OBJECT, PARMS)
+*   Local subroutine TYPE1_LIST_ADD_CHILD (AGGR_OBJ, OBJECT)
 }
 procedure type1_list_add_child (       {Add child to this object}
   in      aggr_obj: ray_object_t;      {the object to add child to}
-  in      object: ray_object_t;        {the object to add}
-  in      parms: univ integer32);      {unused optional parameters}
+  var     object: ray_object_t);       {the object to add}
   val_param;
 
 var

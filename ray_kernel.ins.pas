@@ -83,11 +83,9 @@ ray_shader_t = ^procedure (            {resolve color given hit info}
 *
 *   OBJECT related data structures.
 }
-  ray_obj_data_p_t =                   {pointer to object-specific data block}
-    ^ray_obj_data_t;
-
-  ray_obj_data_t =                     {template for object-specific data block}
-    integer32;                         {only need to deal with pointers to this here}
+  ray_crea_data_p_t = ^ray_crea_data_t;
+  ray_crea_data_t = sys_int_machine_t; {generic structure for create-time object data,
+                                        use specific xxx_CREA_DATA_T structures}
 
   ray_object_parms_t =                 {run-time data for object INTERSECT_CHECK proc}
     integer32;                         {kernel only deals with pointers to this}
@@ -96,7 +94,6 @@ ray_shader_t = ^procedure (            {resolve color given hit info}
     ray_geom_point,                    {XYZ coordinates of intersection point}
     ray_geom_unorm                     {unit normal vector to surface}
     );
-
   ray_geom_flags_t =                   {bit field of all RAY_GEOM_FLAG_VALUES}
     set of ray_geom_flag_values;
 
@@ -110,7 +107,7 @@ ray_shader_t = ^procedure (            {resolve color given hit info}
 
   ray_object_t = record                {all the object-specific information}
     routines_p: ^ray_object_routines_t; {pointer to generic class of routines}
-    data_p: ray_obj_data_p_t;          {pointer to object-specfic data}
+    data_p: univ_ptr;                  {pointer to object-specfic data}
     end;
 
   ray_object_version_t = record        {version and ID information about an object}
@@ -157,7 +154,7 @@ ray_shader_t = ^procedure (            {resolve color given hit info}
 }
 ray_object_create_proc_t = ^procedure ( {create a new object}
   in out  object: ray_object_t;        {object to be filled in}
-  var     data: univ ray_obj_data_t;   {specific build-time data for this object}
+  in var  crea: univ ray_crea_data_t;  {specific build-time data for this object}
   out     stat: sys_err_t);            {completion status code}
   val_param;
 
@@ -166,9 +163,9 @@ ray_object_version_proc_t = ^procedure ( {return version info of this object}
   val_param;
 
 ray_object_isect_check_proc_t = ^function ( {check for ray hit this object}
-  in out  ray: univ ray_desc_t;        {input ray descriptor}
+  in out  gray: univ ray_desc_t;       {input ray descriptor}
   in      object: ray_object_t;        {input object to intersect ray with}
-  var     parms: univ ray_object_parms_t; {run time obj-specific parameters}
+  in      gparms: univ ray_object_parms_t; {run time obj-specific parameters}
   out     hit_info: ray_hit_info_t;    {handle to routines and data to get hit color}
   out     shader: ray_shader_t)        {pointer to shader to resolve color here}
   :boolean;                            {TRUE if ray hit this object}
@@ -189,8 +186,7 @@ ray_object_isect_box_proc_t = ^procedure ( {return object/box intersect status}
 
 ray_object_add_child_proc_t = ^procedure ( {add child to an aggregate object}
   in      aggr_obj: ray_object_t;      {aggregate object to add child to}
-  in      object: ray_object_t;        {child object to add to aggregate object}
-  in      parms: univ integer32);      {optional parameters to aggregate object}
+  var     object: ray_object_t);       {child object to add to aggregate object}
   val_param;
 {
 *   Object routines block.
@@ -215,8 +211,7 @@ ray_object_add_child_proc_t = ^procedure ( {add child to an aggregate object}
 *   signify that the particular object does not perform that operation.
 }
   ray_object_routines_make_t = ^procedure ( {fill in pointers to obj entry points}
-    out     pointers: ray_object_routines_t; {block to fill in}
-    in      size: integer32);          {number of bytes in POINTERS structure}
+    out     pointers: ray_object_routines_t); {block to fill in}
     val_param;
 {
 ******************************

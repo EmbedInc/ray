@@ -5,7 +5,8 @@ define type1_tri_routines_make;
 %include 'ray_type1_2.ins.pas';
 
 type
-  object_data_t = record               {mandatory fields of data for this object}
+  tri_data_p_t = ^tri_data_t;
+  tri_data_t = record                  {mandatory fields of data for this object}
     flags: type1_tri_flags_t;          {indicates what optional vertex data exists
                                         this field MUST BE FIRST, since it is the
                                         only field if triangle is too small to see}
@@ -17,282 +18,26 @@ type
     zbx, zby: single;
     end;
 
-  object_data_p_t =                    {pointer to object data block}
-    ^object_data_t;
-
+  vert_opt_rgb_p_t = ^vert_opt_rgb_t;
   vert_opt_rgb_t = record              {optional RGB diffuse data per vertex}
     v1, v2, v3: img_pixel1_t;
     end;
 
-  vert_opt_rgb_p_t =                   {pointer to optional RGB vertex data}
-    ^vert_opt_rgb_t;
-
+  vert_opt_shnorm_p_t = ^vert_opt_shnorm_t;
   vert_opt_shnorm_t = record           {optional shading normal vector per vertex}
     v1, v2, v3: vect_3d_t;
     end;
 
-  vert_opt_shnorm_p_t =                {pointer to optional shading normal per vert}
-    ^vert_opt_shnorm_t;
-
-  object_hit_geom_t = record           {saved data from intersection check}
+  tri_hit_geom_p_t = ^tri_hit_geom_t;
+  tri_hit_geom_t = record              {saved data from intersection check}
     base: type1_hit_info_t;            {mandatory part of hit geometry save area}
-    data_p: object_data_p_t;           {pointer to object's private data block}
+    data_p: tri_data_p_t;              {pointer to object's private data block}
     hpnt: vect_3d_t;                   {hit point in object's space}
     hitx, hity: real;                  {hit point in triangle canonical space}
     flip_factor: real;                 {-1 or 1 to flip normal vectors to front}
     end;
-
-  object_hit_geom_p_t =                {pointer to hit geometry block}
-    ^object_hit_geom_t;
-
-procedure type1_tri_create (           {create new primitive with custom data}
-  out     object: ray_object_t;        {newly filled in object block}
-  in      data: type1_tri_user_data_t; {parameters from user}
-  out     stat: sys_err_t);            {completion status code}
-  val_param; forward;
-
-procedure type1_tri_version (          {return version information about object}
-  out     version: ray_object_version_t); {returned version information}
-  val_param; forward;
-
-function type1_tri_intersect_check (   {check for ray/object intersection}
-  in out  ray: type1_ray_t;            {ray descriptor}
-  in      object: ray_object_t;        {object to intersect ray with}
-  in      parms: type1_object_parms_t; {run-time parameters passed from above}
-  out     hit_info: ray_hit_info_t;    {all returned information}
-  out     shader: ray_shader_t)        {pointer to shader to resolve color}
-  :boolean;                            {TRUE if ray does hit object}
-  val_param; forward;
-
-procedure type1_tri_intersect_geom (   {return detailed geometry of intersection}
-  in      hit_info: ray_hit_info_t;    {data saved by INTERSECT_CHECK}
-  in      flags: ray_geom_flags_t;     {bit mask list of what is being requested}
-  out     geom_info: ray_geom_info_t); {filled in geometric info}
-  val_param; forward;
-
-procedure type1_tri_intersect_box (    {find object/box intersection status}
-  in      box: ray_box_t;              {descriptor for a paralellpiped volume}
-  in      object: ray_object_t;        {object to intersect with the box}
-  out     here: boolean;               {TRUE if ISECT_CHECK could be true in box}
-  out     enclosed: boolean);          {TRUE if solid obj, and completely encloses box}
-  val_param; forward;
-
-procedure type1_tri_add_child (        {Add child to aggregate object (illegal)}
-  in      object: ray_object_t;        {the object to add}
-  in      parms: univ integer32);      {unused optional parameters}
-  val_param; forward;
 {
-*************************************************************************
-*
-*   Subroutine TYPE1_TRI_ROUTINES_MAKE (POINTERS, SIZE)
-*
-*   Fill in the routines block for this class of objects.  SIZE is the size in bytes
-*   of the data structure to be filled in.
-}
-procedure type1_tri_routines_make (    {fill in object routines block}
-  out     pointers: ray_object_routines_t; {block to fill in}
-  in      size: sys_int_adr_t);        {number of bytes in POINTERS}
-  val_param;
-
-var
-  ents: sys_int_machine_t;             {number of routine entries in POINTERS}
-  i: sys_int_machine_t;                {loop counter}
-  max_ofs: sys_int_machine_t;          {byte offset of last entry in POINTERS}
-  p: ^ray_object_create_proc_t;        {pointer to a subroutine entry point}
-
-begin
-  ents := size div sizeof(univ_ptr);   {number of pointers in block}
-  p := univ_ptr(addr(pointers));       {init pointer to first entry in POINTERS}
-  for i := 1 to ents do begin          {once for each slot in POINTERS}
-    p^ := nil;                         {init this slot in POINTERS to the nil pointer}
-    p := univ_ptr(sys_int_adr_t(p)+sizeof(p^)); {point to next slot in POINTERS}
-    end;
-  max_ofs := (ents - 1)*4;             {byte offset of last entry}
-
-  if (sys_int_adr_t(addr(pointers.version))-sys_int_adr_t(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.version :=
-      ray_object_version_proc_t(addr(type1_tri_version));
-    ;
-  if (sys_int_adr_t(addr(pointers.create))-sys_int_adr_t(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.create :=
-      ray_object_create_proc_t(addr(type1_tri_create));
-    ;
-  if (sys_int_adr_t(addr(pointers.intersect_check))-sys_int_adr_t(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.intersect_check :=
-      ray_object_isect_check_proc_t(addr(type1_tri_intersect_check));
-    ;
-  if (sys_int_adr_t(addr(pointers.intersect_geom))-sys_int_adr_t(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.intersect_geom :=
-      ray_object_isect_geom_proc_t(addr(type1_tri_intersect_geom));
-    ;
-  if (sys_int_adr_t(addr(pointers.intersect_box))-sys_int_adr_t(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.intersect_box :=
-      ray_object_isect_box_proc_t(addr(type1_tri_intersect_box));
-    ;
-  if (sys_int_adr_t(addr(pointers.add_child))-sys_int_adr_t(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.add_child :=
-      ray_object_add_child_proc_t(addr(type1_tri_add_child));
-    ;
-  end;
-{
-*************************************************************************
-*
-*   Local subroutine TYPE1_TRI_CREATE (OBJECT, DATA, STAT)
-*
-*   Create a new instance of the TRI (triangle) object.
-}
-procedure type1_tri_create (           {create new primitive with custom data}
-  out     object: ray_object_t;        {newly filled in object block}
-  in      data: type1_tri_user_data_t; {parameters from user}
-  out     stat: sys_err_t);            {completion status code}
-  val_param;
-
-var
-  size: sys_int_adr_t;                 {amount of mem needed for private data block}
-  data_p: object_data_p_t;             {pointer to mandatory part of private data}
-  rgb_p: vert_opt_rgb_p_t;             {pointer to current vert RGB data}
-  shnorm_p: vert_opt_shnorm_p_t;       {pointer to current vert shading normal data}
-  opt_next: sys_int_adr_t;             {address of next optional data in vertex 1}
-  fwd: vect_mat3x3_t;                  {canonical to obj transformation matrix}
-  bak: vect_mat3x3_t;                  {obj to canonical transformation matrix}
-  flags: type1_tri_flags_t;            {local copy of user's flags}
-  bak_exists: boolean;                 {unused subroutine return flag}
-  m: real;                             {scratch scale factor}
-
-begin
-  sys_error_none (stat);               {init to no error}
-{
-*   To find the transform from the object's space to the canonical space, we
-*   will construct the canonical to object transform and then take its inverse.
-*
-*   In the canonical space, the triangle exists from 0,0 to 1,0 to 0,1.  Since
-*   this is a 2D space, the Z vector is assumed to be unit size and perpendicular
-*   to the triangle plane.
-*
-*   Make the canonical to object transformation matrix.
-}
-  fwd.xb.x := data.p2.x - data.p1.x;
-  fwd.xb.y := data.p2.y - data.p1.y;
-  fwd.xb.z := data.p2.z - data.p1.z;
-
-  fwd.yb.x := data.p3.x - data.p1.x;
-  fwd.yb.y := data.p3.y - data.p1.y;
-  fwd.yb.z := data.p3.z - data.p1.z;
-
-  fwd.zb.x := fwd.xb.y*fwd.yb.z - fwd.xb.z*fwd.yb.y; {cross of X and Y vectors}
-  fwd.zb.y := fwd.xb.z*fwd.yb.x - fwd.xb.x*fwd.yb.z;
-  fwd.zb.z := fwd.xb.x*fwd.yb.y - fwd.xb.y*fwd.yb.x;
-  m := sqrt(sqr(fwd.zb.x) + sqr(fwd.zb.y) + sqr(fwd.zb.z));
-  if m < 1.0E-29                       {check triangle size}
-    then begin                         {triangle is too small to see}
-      object.data_p := nil;            {indicate this triangle will be ignored}
-      return;
-      end
-    else begin                         {triangle is big enough to see}
-      m := 1.0 / m;                    {make scale factor for unitizing vector}
-      end
-    ;
-  fwd.zb.x := fwd.zb.x * m;            {unitize geometric normal vector}
-  fwd.zb.y := fwd.zb.y * m;
-  fwd.zb.z := fwd.zb.z * m;
-{
-*   This triangle is definately big enough to see.  Allocate our private data block.
-}
-  flags := data.flags;                 {make local copy of user's flags}
-  if                                   {we will need to store RGBA ?}
-      (type1_tri_flag_rgb_k in flags) or
-      (type1_tri_flag_alpha_k in flags)
-      then begin
-    flags := flags + [type1_tri_flag_rgba_k];
-    end;
-
-  size := sizeof(data_p^);             {init to size of required fields}
-  if type1_tri_flag_rgba_k in flags then begin {storing RGB per vertex ?}
-    size := size + sizeof(rgb_p^);     {add size needed for RGB per vertex}
-    end;
-  if type1_tri_flag_shnorm_k in flags then begin {storing normal per vertex ?}
-    size := size + sizeof(shnorm_p^);  {add size needed for normal per vertex}
-    end;
-  util_mem_grab (                      {allocate private memory for this triangle}
-    size,                              {amount of memory needed}
-    ray_mem_p^,                        {parent memory context}
-    false,                             {won't need to individually deallocate this}
-    data_p);                           {returned point to new memory}
-  opt_next := sys_int_adr_t(data_p) + sizeof(data_p^); {optional data starts here}
-  object.data_p := ray_obj_data_p_t(data_p); {set pointer to object data block}
-{
-*   The private memory block for this object has been allocated.  DATA_P points
-*   to the mandatory fields.  OPT_START is the address where optional data will
-*   start, if any.
-*
-*   The canonical to object space transform is in FWD.  Use its inverse to
-*   stuff the gemometric information in the mandatory fields of the private
-*   data block.
-}
-  vect_3x3_invert (fwd, m, bak_exists, bak); {make obj to canonical xform in BAK}
-  data_p^.p1.x := data.p1.x;           {origin in canonical triangle space}
-  data_p^.p1.y := data.p1.y;
-  data_p^.p1.z := data.p1.z;
-  data_p^.norm.x := fwd.zb.x;          {object space unit normal vector}
-  data_p^.norm.y := fwd.zb.y;
-  data_p^.norm.z := fwd.zb.z;
-  data_p^.xbx := bak.xb.x;             {save the 2D part of obj to canonical xform}
-  data_p^.xby := bak.xb.y;
-  data_p^.ybx := bak.yb.x;
-  data_p^.yby := bak.yb.y;
-  data_p^.zbx := bak.zb.x;
-  data_p^.zby := bak.zb.y;
-
-  data_p^.visprop_p := data.visprop_p; {copy visprop block pointer from user data}
-  data_p^.flags := flags;              {save optional data flags in tri data block}
-{
-*   All the mandatory fields of our private data for this triangle have been
-*   filled in.  Now fill in the optional per-vertex data.
-}
-  if type1_tri_flag_rgba_k in flags then begin {RGB and/or A per vertex ?}
-    rgb_p := univ_ptr(opt_next);       {get start of RGB data}
-    opt_next := opt_next + sizeof(rgb_p^); {update where next optional data goes}
-
-    if type1_tri_flag_rgb_k in flags then begin {RGB present per vertex ?}
-      rgb_p^.v1.red := trunc(256.0 * min(0.999, max(0.0, data.v1.red)));
-      rgb_p^.v1.grn := trunc(256.0 * min(0.999, max(0.0, data.v1.grn)));
-      rgb_p^.v1.blu := trunc(256.0 * min(0.999, max(0.0, data.v1.blu)));
-
-      rgb_p^.v2.red := trunc(256.0 * min(0.999, max(0.0, data.v2.red)));
-      rgb_p^.v2.grn := trunc(256.0 * min(0.999, max(0.0, data.v2.grn)));
-      rgb_p^.v2.blu := trunc(256.0 * min(0.999, max(0.0, data.v2.blu)));
-
-      rgb_p^.v3.red := trunc(256.0 * min(0.999, max(0.0, data.v3.red)));
-      rgb_p^.v3.grn := trunc(256.0 * min(0.999, max(0.0, data.v3.grn)));
-      rgb_p^.v3.blu := trunc(256.0 * min(0.999, max(0.0, data.v3.blu)));
-      end;
-
-    if type1_tri_flag_alpha_k in flags then begin {ALPHA present per vertex ?}
-      rgb_p^.v1.alpha := trunc(256.0 * min(0.999, max(0.0, data.v1.alpha)));
-      rgb_p^.v2.alpha := trunc(256.0 * min(0.999, max(0.0, data.v2.alpha)));
-      rgb_p^.v3.alpha := trunc(256.0 * min(0.999, max(0.0, data.v3.alpha)));
-      end;
-    end;                               {done handling optional RGBA data}
-
-
-  if type1_tri_flag_shnorm_k in flags then begin {storing shading normals ?}
-    shnorm_p := univ_ptr(opt_next);    {get pointer to start of shading normals}
-(*
-    opt_next := opt_next + sizeof(shnorm_p^); {update where next optional data goes}
-*)
-    shnorm_p^.v1 := data.v1.shnorm;
-    shnorm_p^.v2 := data.v2.shnorm;
-    shnorm_p^.v3 := data.v3.shnorm;
-    end;
-  end;
-{
-*************************************************************************
+********************************************************************************
 *
 *   Local subroutine TYPE1_TRI_VERSION (VERSION)
 *
@@ -314,57 +59,214 @@ begin
   version.aggregate := false;
   end;
 {
-*************************************************************************
+********************************************************************************
+*
+*   Local subroutine TYPE1_TRI_CREATE (OBJECT, CREA, STAT)
+*
+*   Create a new instance of the TRI (triangle) object.
+}
+procedure type1_tri_create (           {create new primitive with custom data}
+  in out  object: ray_object_t;        {object to be filled in}
+  in var  crea: univ ray_crea_data_t;  {specific build-time data for this object}
+  out     stat: sys_err_t);            {completion status code}
+  val_param;
+
+var
+  crea_p: type1_tri_crea_data_p_t;     {pointer to creation data, our format}
+  size: sys_int_adr_t;                 {amount of mem needed for private data block}
+  data_p: tri_data_p_t;                {pointer to mandatory part of private data}
+  rgb_p: vert_opt_rgb_p_t;             {pointer to current vert RGB data}
+  shnorm_p: vert_opt_shnorm_p_t;       {pointer to current vert shading normal data}
+  opt_next: sys_int_adr_t;             {address of next optional data in vertex 1}
+  fwd: vect_mat3x3_t;                  {canonical to obj transformation matrix}
+  bak: vect_mat3x3_t;                  {obj to canonical transformation matrix}
+  flags: type1_tri_flags_t;            {local copy of user's flags}
+  bak_exists: boolean;                 {unused subroutine return flag}
+  m: real;                             {scratch scale factor}
+
+begin
+  sys_error_none (stat);               {init to no error}
+  crea_p := univ_ptr(addr(crea));      {make pointer to creation data, our format}
+{
+*   To find the transform from the object's space to the canonical space, we
+*   will construct the canonical to object transform and then take its inverse.
+*
+*   In the canonical space, the triangle exists from 0,0 to 1,0 to 0,1.  Since
+*   this is a 2D space, the Z vector is assumed to be unit size and perpendicular
+*   to the triangle plane.
+*
+*   Make the canonical to object transformation matrix.
+}
+  fwd.xb.x := crea_p^.p2.x - crea_p^.p1.x;
+  fwd.xb.y := crea_p^.p2.y - crea_p^.p1.y;
+  fwd.xb.z := crea_p^.p2.z - crea_p^.p1.z;
+
+  fwd.yb.x := crea_p^.p3.x - crea_p^.p1.x;
+  fwd.yb.y := crea_p^.p3.y - crea_p^.p1.y;
+  fwd.yb.z := crea_p^.p3.z - crea_p^.p1.z;
+
+  fwd.zb.x := fwd.xb.y*fwd.yb.z - fwd.xb.z*fwd.yb.y; {cross of X and Y vectors}
+  fwd.zb.y := fwd.xb.z*fwd.yb.x - fwd.xb.x*fwd.yb.z;
+  fwd.zb.z := fwd.xb.x*fwd.yb.y - fwd.xb.y*fwd.yb.x;
+  m := sqrt(sqr(fwd.zb.x) + sqr(fwd.zb.y) + sqr(fwd.zb.z));
+  if m < 1.0E-29                       {check triangle size}
+    then begin                         {triangle is too small to see}
+      object.data_p := nil;            {indicate this triangle will be ignored}
+      return;
+      end
+    else begin                         {triangle is big enough to see}
+      m := 1.0 / m;                    {make scale factor for unitizing vector}
+      end
+    ;
+  fwd.zb.x := fwd.zb.x * m;            {unitize geometric normal vector}
+  fwd.zb.y := fwd.zb.y * m;
+  fwd.zb.z := fwd.zb.z * m;
+{
+*   This triangle is definately big enough to see.  Allocate our private data block.
+}
+  flags := crea_p^.flags;              {make local copy of user's flags}
+  if                                   {we will need to store RGBA ?}
+      (type1_tri_flag_rgb_k in flags) or
+      (type1_tri_flag_alpha_k in flags)
+      then begin
+    flags := flags + [type1_tri_flag_rgba_k];
+    end;
+
+  size := sizeof(data_p^);             {init to size of required fields}
+  if type1_tri_flag_rgba_k in flags then begin {storing RGB per vertex ?}
+    size := size + sizeof(rgb_p^);     {add size needed for RGB per vertex}
+    end;
+  if type1_tri_flag_shnorm_k in flags then begin {storing normal per vertex ?}
+    size := size + sizeof(shnorm_p^);  {add size needed for normal per vertex}
+    end;
+  util_mem_grab (                      {allocate private memory for this triangle}
+    size,                              {amount of memory needed}
+    ray_mem_p^,                        {parent memory context}
+    false,                             {won't need to individually deallocate this}
+    data_p);                           {returned point to new memory}
+  opt_next := sys_int_adr_t(data_p) + sizeof(data_p^); {optional data starts here}
+  object.data_p := data_p;             {set pointer to object data block}
+{
+*   The private memory block for this object has been allocated.  DATA_P points
+*   to the mandatory fields.  OPT_START is the address where optional data will
+*   start, if any.
+*
+*   The canonical to object space transform is in FWD.  Use its inverse to
+*   stuff the gemometric information in the mandatory fields of the private
+*   data block.
+}
+  vect_3x3_invert (fwd, m, bak_exists, bak); {make obj to canonical xform in BAK}
+  data_p^.p1.x := crea_p^.p1.x;        {origin in canonical triangle space}
+  data_p^.p1.y := crea_p^.p1.y;
+  data_p^.p1.z := crea_p^.p1.z;
+  data_p^.norm.x := fwd.zb.x;          {object space unit normal vector}
+  data_p^.norm.y := fwd.zb.y;
+  data_p^.norm.z := fwd.zb.z;
+  data_p^.xbx := bak.xb.x;             {save the 2D part of obj to canonical xform}
+  data_p^.xby := bak.xb.y;
+  data_p^.ybx := bak.yb.x;
+  data_p^.yby := bak.yb.y;
+  data_p^.zbx := bak.zb.x;
+  data_p^.zby := bak.zb.y;
+
+  data_p^.visprop_p := crea_p^.visprop_p; {copy visprop block pointer from user data}
+  data_p^.flags := flags;              {save optional data flags in tri data block}
+{
+*   All the mandatory fields of our private data for this triangle have been
+*   filled in.  Now fill in the optional per-vertex crea_p^.
+}
+  if type1_tri_flag_rgba_k in flags then begin {RGB and/or A per vertex ?}
+    rgb_p := univ_ptr(opt_next);       {get start of RGB data}
+    opt_next := opt_next + sizeof(rgb_p^); {update where next optional data goes}
+
+    if type1_tri_flag_rgb_k in flags then begin {RGB present per vertex ?}
+      rgb_p^.v1.red := trunc(256.0 * min(0.999, max(0.0, crea_p^.v1.red)));
+      rgb_p^.v1.grn := trunc(256.0 * min(0.999, max(0.0, crea_p^.v1.grn)));
+      rgb_p^.v1.blu := trunc(256.0 * min(0.999, max(0.0, crea_p^.v1.blu)));
+
+      rgb_p^.v2.red := trunc(256.0 * min(0.999, max(0.0, crea_p^.v2.red)));
+      rgb_p^.v2.grn := trunc(256.0 * min(0.999, max(0.0, crea_p^.v2.grn)));
+      rgb_p^.v2.blu := trunc(256.0 * min(0.999, max(0.0, crea_p^.v2.blu)));
+
+      rgb_p^.v3.red := trunc(256.0 * min(0.999, max(0.0, crea_p^.v3.red)));
+      rgb_p^.v3.grn := trunc(256.0 * min(0.999, max(0.0, crea_p^.v3.grn)));
+      rgb_p^.v3.blu := trunc(256.0 * min(0.999, max(0.0, crea_p^.v3.blu)));
+      end;
+
+    if type1_tri_flag_alpha_k in flags then begin {ALPHA present per vertex ?}
+      rgb_p^.v1.alpha := trunc(256.0 * min(0.999, max(0.0, crea_p^.v1.alpha)));
+      rgb_p^.v2.alpha := trunc(256.0 * min(0.999, max(0.0, crea_p^.v2.alpha)));
+      rgb_p^.v3.alpha := trunc(256.0 * min(0.999, max(0.0, crea_p^.v3.alpha)));
+      end;
+    end;                               {done handling optional RGBA data}
+
+  if type1_tri_flag_shnorm_k in flags then begin {storing shading normals ?}
+    shnorm_p := univ_ptr(opt_next);    {get pointer to start of shading normals}
+(*
+    opt_next := opt_next + sizeof(shnorm_p^); {update where next optional data goes}
+*)
+    shnorm_p^.v1 := crea_p^.v1.shnorm;
+    shnorm_p^.v2 := crea_p^.v2.shnorm;
+    shnorm_p^.v3 := crea_p^.v3.shnorm;
+    end;
+  end;
+{
+********************************************************************************
 *
 *   Local function TYPE1_TRI_INTERSECT_CHECK (
-*     RAY, OBJECT, PARMS, HIT_INFO, SHADER)
+*     GRAY, OBJECT, GPARMS, HIT_INFO, SHADER)
 *
 *   Check ray and object for an intersection.  If so, return TRUE, and save
 *   any partial results in HIT_INFO.  These partial results may be used later
 *   to get detailed information about the intersection geometry.
 }
 function type1_tri_intersect_check (   {check for ray/object intersection}
-  in out  ray: type1_ray_t;            {ray descriptor}
-  in      object: ray_object_t;        {object to intersect ray with}
-  in      parms: type1_object_parms_t; {run-time parameters passed from above}
-  out     hit_info: ray_hit_info_t;    {all returned information}
-  out     shader: ray_shader_t)        {pointer to shader to resolve color}
+  in out  gray: univ ray_desc_t;       {input ray descriptor}
+  in      object: ray_object_t;        {input object to intersect ray with}
+  in      gparms: univ ray_object_parms_t; {run time obj-specific parameters}
+  out     hit_info: ray_hit_info_t;    {handle to routines and data to get hit color}
+  out     shader: ray_shader_t)        {pointer to shader to resolve color here}
   :boolean;                            {TRUE if ray does hit object}
   val_param;
 
 var
-  dp: object_data_p_t;                 {pointer to object's private data block}
+  ray_p: type1_ray_p_t;                {pointer to ray, our format}
+  parms_p: type1_object_parms_p_t;     {pointer to runtime parameters, our format}
+  dp: tri_data_p_t;                    {pointer to object's private data block}
   rndot: real;                         {dot product of ray and tri normal vectors}
   dis: real;                           {ray distance to triangle plane}
   hpnt: vect_3d_t;                     {hit point in object space}
   hrel: vect_3d_t;                     {hit point relative to vertex 1}
   hx, hy: real;                        {hit point in canonical 2D triangle space}
-  hit_geom_p: object_hit_geom_p_t;     {pointer to our private hit info}
+  hit_geom_p: tri_hit_geom_p_t;        {pointer to our private hit info}
 
 label
   no_hit;
 
 begin
+  ray_p := univ_ptr(addr(gray));       {make pointer to ray info, our format}
+  parms_p := univ_ptr(addr(gparms));   {make poitner to runtime parameters, our format}
+
   stats_tri.isect_ray := stats_tri.isect_ray + 1; {one more ray intersect check}
-  dp := object_data_p_t(object.data_p); {make local pointer to private data}
+  dp := object.data_p;                 {make local pointer to private data}
 
   rndot :=                             {dot product of ray and tri normal vectors}
-    (ray.vect.x * dp^.norm.x) +
-    (ray.vect.y * dp^.norm.y) +
-    (ray.vect.z * dp^.norm.z);
+    (ray_p^.vect.x * dp^.norm.x) +
+    (ray_p^.vect.y * dp^.norm.y) +
+    (ray_p^.vect.z * dp^.norm.z);
   if abs(rndot) < 1.0E-20 then goto no_hit; {triangle plane too paralell to ray ?}
 
   dis := (                             {ray distance to triangle plane}
-    ((dp^.p1.x - ray.point.x) * dp^.norm.x) +
-    ((dp^.p1.y - ray.point.y) * dp^.norm.y) +
-    ((dp^.p1.z - ray.point.z) * dp^.norm.z)) / rndot;
+    ((dp^.p1.x - ray_p^.point.x) * dp^.norm.x) +
+    ((dp^.p1.y - ray_p^.point.y) * dp^.norm.y) +
+    ((dp^.p1.z - ray_p^.point.z) * dp^.norm.z)) / rndot;
 
-  if dis <= ray.min_dist then goto no_hit; {intersection is too close ?}
-  if dis >= ray.max_dist then goto no_hit; {intersection is too far away ?}
+  if dis <= ray_p^.min_dist then goto no_hit; {intersection is too close ?}
+  if dis >= ray_p^.max_dist then goto no_hit; {intersection is too far away ?}
 
-  hpnt.x := ray.point.x + (ray.vect.x * dis); {object space plane intersection point}
-  hpnt.y := ray.point.y + (ray.vect.y * dis);
-  hpnt.z := ray.point.z + (ray.vect.z * dis);
+  hpnt.x := ray_p^.point.x + (ray_p^.vect.x * dis); {object space plane intersection point}
+  hpnt.y := ray_p^.point.y + (ray_p^.vect.y * dis);
+  hpnt.z := ray_p^.point.z + (ray_p^.vect.z * dis);
 
   hrel.x := hpnt.x - dp^.p1.x;         {hit point relative to vertex 1}
   hrel.y := hpnt.y - dp^.p1.y;
@@ -382,7 +284,7 @@ begin
 *   is the canonical triangle space hit point.
 }
   hit_geom_p := univ_ptr(addr(mem[next_mem])); {get pointer to hit geom block}
-  next_mem := ((sizeof(object_hit_geom_t)+3) & 16#0FFFFFFFC)
+  next_mem := ((sizeof(tri_hit_geom_t)+3) & 16#0FFFFFFFC)
     + next_mem;                        {allocate 4 byte chunks for HIT_GEOM block}
   if next_mem > mem_block_size then begin {not enough room for HIT_GEOM block ?}
     sys_message_bomb ('ray_type1', 'mem_overflow', nil, 0);
@@ -394,7 +296,7 @@ begin
     ray_shader_parms_p_t(hit_geom_p);
   if dp^.visprop_p <> nil              {check where to get visprop pointer from}
     then hit_geom_p^.base.visprop_p := dp^.visprop_p {get it from object data}
-    else hit_geom_p^.base.visprop_p := parms.visprop_p; {from run-time parameters}
+    else hit_geom_p^.base.visprop_p := parms_p^.visprop_p; {from run-time parameters}
 
   if rndot > 0.0                       {which side of the triangle did we hit ?}
     then begin                         {ray hit back side of triangle}
@@ -411,13 +313,13 @@ begin
       end
     ;
 
-  hit_geom_p^.base.liparm_p := parms.liparm_p; {save pointer to light sources block}
+  hit_geom_p^.base.liparm_p := parms_p^.liparm_p; {save pointer to light sources block}
   hit_geom_p^.data_p := dp;            {save pointer to object's private data}
   hit_geom_p^.hpnt := hpnt;            {save hit point in object coor space}
   hit_geom_p^.hitx := hx;              {save hit point in 2D canonical tri space}
   hit_geom_p^.hity := hy;
 
-  shader := parms.shader;              {default to from run time parameters}
+  shader := parms_p^.shader;           {default to from run time parameters}
   type1_tri_intersect_check := true;   {indicate there was an intersection}
   stats_tri.hit_ray := stats_tri.hit_ray + 1; {one more ray/tri intersect found}
   return;
@@ -426,7 +328,7 @@ no_hit:                                {jump here if ray doesn't intersect trian
   type1_tri_intersect_check := false;
   end;
 {
-*************************************************************************
+********************************************************************************
 *
 *   Local subroutine TYPE1_TRI_INTERSECT_GEOM (HIT_INFO, FLAGS, GEOM_INFO)
 *
@@ -442,7 +344,7 @@ procedure type1_tri_intersect_geom (   {return detailed geometry of intersection
   val_param;
 
 var
-  hit_geom_p: object_hit_geom_p_t;     {pointer to hit geometry block}
+  hit_geom_p: tri_hit_geom_p_t;        {pointer to hit geometry block}
   opt_next: sys_int_adr_t;             {address of next optional per-vertex data}
   rgb_p: vert_opt_rgb_p_t;             {pointer to current vert RGB data}
   shn_p: vert_opt_shnorm_p_t;          {pointers to user-supplied shading normals}
@@ -453,7 +355,7 @@ var
 
 begin
   hit_geom_p :=                        {pointer to HIT_GEOM block}
-    object_hit_geom_p_t(hit_info.shader_parms_p);
+    tri_hit_geom_p_t(hit_info.shader_parms_p);
   with
       hit_geom_p^: geom,               {GEOM is hit geometry block}
       hit_geom_p^.data_p^: data        {DATA is object private data block}
@@ -539,8 +441,7 @@ begin
   end;                                 {done with GEOM and DATA abbreviations}
   end;
 {
-*************************************************************************
-*
+********************************************************************************
 }
 procedure type1_tri_intersect_box (    {find object/box intersection status}
   in      box: ray_box_t;              {descriptor for a paralellpiped volume}
@@ -563,7 +464,7 @@ type
     end;
 
 var
-  data_p: object_data_p_t;             {pointer to private object data}
+  data_p: tri_data_p_t;                {pointer to private object data}
   b0: box_corner_t;                    {at box point}
   b1: box_corner_t;                    {at box point + edge 1}
   b2: box_corner_t;                    {at box point + edge 2}
@@ -589,7 +490,7 @@ label
 begin
   stats_tri.isect_box := stats_tri.isect_box + 1; {one more box intersect check}
   enclosed := false;                   {triangle can never enclose a box}
-  data_p := object_data_p_t(object.data_p); {get pointer to our private data block}
+  data_p := tri_data_p_t(object.data_p); {get pointer to our private data block}
   if data_p = nil then goto out_box;   {no triangle really here ?}
   with data_p^: data do begin          {DATA is our private data block}
 {
@@ -948,19 +849,18 @@ in_box:                                {jump here if some part of tri is inside 
   stats_tri.hit_box := stats_tri.hit_box + 1; {one more tri/box intersect found}
   end;
 {
-*************************************************************************
-*
+********************************************************************************
 }
 procedure type1_tri_add_child (        {Add child to this object (illegal)}
-  in      object: ray_object_t;        {the object to add}
-  in      parms: univ integer32);      {unused optional parameters}
+  in      aggr_obj: ray_object_t;      {aggregate object to add child to}
+  var     object: ray_object_t);       {child object to add to aggregate object}
   val_param;
 
 begin
   sys_message_bomb ('ray_type1', 'tri_not_aggregate', nil, 0);
   end;
 {
-*************************************************************************
+********************************************************************************
 }
 procedure type1_stats_init;
   val_param;
@@ -976,7 +876,7 @@ begin
   stats_oct.mem := 0;
   end;
 {
-*************************************************************************
+********************************************************************************
 }
 procedure type1_stats_print;
   val_param;
@@ -1001,4 +901,23 @@ begin
   writeln ('  Total voxels:         ', i:9);
   r := stats_oct.mem / 1048576.0;
   writeln ('  Mbytes dynamic memory ', r:12:2);
+  end;
+{
+********************************************************************************
+*
+*   Subroutine TYPE1_TRI_ROUTINES_MAKE (POINTERS)
+*
+*   Fill in the routines block for this class of objects.
+}
+procedure type1_tri_routines_make (    {fill in object routines block}
+  out     pointers: ray_object_routines_t); {block to fill in}
+  val_param;
+
+begin
+  pointers.create := addr(type1_tri_create);
+  pointers.version := addr(type1_tri_version);
+  pointers.intersect_check := addr(type1_tri_intersect_check);
+  pointers.intersect_geom := addr(type1_tri_intersect_geom);
+  pointers.intersect_box := addr(type1_tri_intersect_box);
+  pointers.add_child := addr(type1_tri_add_child);
   end;

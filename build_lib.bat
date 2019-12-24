@@ -24,7 +24,7 @@ call src_pas %srcdir% %libname%_view1 %1
 rem call src_pas %srcdir% type1_3dfield %1
 call src_pas %srcdir% type1_comblock %1
 call src_pas %srcdir% type1_image_aliased %1
-call src_pas %srcdir% type1_list %1
+rem call src_pas %srcdir% type1_list %1
 call src_pas %srcdir% type1_octree %1
 rem call src_pas %srcdir% type1_octree_data %1
 call src_pas %srcdir% type1_shader_fixed %1

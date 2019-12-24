@@ -9,7 +9,6 @@ ray_trace.obj
 ray_view1.obj
 type1_comblock.obj
 type1_image_aliased.obj
-type1_list.obj
 type1_octree.obj
 type1_shader_fixed.obj
 type1_shader_phong.obj

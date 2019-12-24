@@ -9,6 +9,7 @@ call src_get %srcdir% %libname%2.ins.pas
 call src_get %srcdir% %libname%_kernel.ins.pas
 call src_get %srcdir% %libname%_type1.ins.pas
 call src_get %srcdir% %libname%_type1_2.ins.pas
+call src_get %srcdir% type1_octree.ins.pas
 
 call src_go %srcdir%
 call src_getfrom sys base.ins.pas

@@ -18,6 +18,7 @@ type
     type1_ltype_point_constant_k,      {point light source, no fall off}
     type1_ltype_point_r2_k);           {point light source, 1/r**2 falloff}
 
+  type1_ray_p_t = ^type1_ray_t;
   type1_ray_t = record                 {dynamic ray descriptor}
     base: ray_desc_t;                  {mandatory ray descriptor entry}
     point: vect_3d_t;                  {ray origin}
@@ -105,6 +106,7 @@ type
   type1_hit_geom_p_t =                 {pointer to internal hit geometry block}
     ^type1_hit_info_t;
 
+  type1_object_parms_p_t = ^type1_object_parms_t;
   type1_object_parms_t = record        {runtime parameters for INTERSECT_CHECK}
     shader: ray_shader_t;              {pointer to shader entry point, may = NIL}
     liparm_p: type1_liparm_p_t;        {pointer to lightsource block, may = NIL}
@@ -140,7 +142,8 @@ type
     shnorm: vect_3d_t;                 {shading normal vector}
     end;
 
-  type1_tri_user_data_t = record       {user data for TRI (triangle) object}
+  type1_tri_crea_data_p_t = ^type1_tri_crea_data_t;
+  type1_tri_crea_data_t = record       {creation data for TRI (triangle) object}
     visprop_p: type1_visprop_p_t;      {pointer to visprop block, may be NIL}
     p1, p2, p3: vect_3d_t;             {verticies, counterclockwise from front face}
     flags: type1_tri_flags_t;          {indicates what optional per-vertex data used}
@@ -151,7 +154,8 @@ type
         v: array[1..3] of type1_tri_opt_vert_t);
     end;
 
-  type1_sphere_user_data_t = record    {user data for SPHERE object}
+  type1_sphere_crea_data_p_t = ^type1_sphere_crea_data_t;
+  type1_sphere_crea_data_t = record    {creation data for SPHERE object}
     visprop_p: type1_visprop_p_t;      {pointer to visprop block, may be NIL}
     center: vect_3d_t;                 {X,Y,Z center of sphere}
     radius: real;                      {radius of sphere}
@@ -162,7 +166,8 @@ type
     visprop_p: type1_visprop_p_t;      {may be NIL to indicate inherited}
     end;
 
-  type1_3dfield_user_data_t = record   {user data for 3DFIELD object}
+  type1_3dfield_crea_data_p_t = ^type1_3dfield_crea_data_t;
+  type1_3dfield_crea_data_t = record   {creation data for 3DFIELD object}
     shader: ray_shader_t;              {shader entry pointer, may be NIL}
     liparm_p: type1_liparm_p_t;        {pointer to light source block, may be NIL}
     visprop_p: type1_visprop_p_t;      {pointer to visprop block, may be NIL}
@@ -176,13 +181,15 @@ type
       array[1..type1_3dfield_max_iso_vals_k] of type1_3dfield_iso_t;
     end;
 
-  type1_list_user_data_t = record      {user data for LIST object}
+  type1_list_crea_data_p_t = ^type1_list_crea_data_t;
+  type1_list_crea_data_t = record      {creation data for LIST object}
     shader: ray_shader_t;              {shader entry pointer, may be NIL}
     liparm_p: type1_liparm_p_t;        {pointer to light source block, may be NIL}
     visprop_p: type1_visprop_p_t;      {pointer to visprop block, may be NIL}
     end;
 
-  type1_octree_user_data_t = record    {user data for OCTREE object}
+  type1_octree_crea_data_p_t = ^type1_octree_crea_data_t;
+  type1_octree_crea_data_t = record    {creation data for OCTREE object}
     shader: ray_shader_t;              {shader entry pointer, may be NIL}
     liparm_p: type1_liparm_p_t;        {pointer to light source block, may be NIL}
     visprop_p: type1_visprop_p_t;      {pointer to visprop block, may be NIL}
@@ -193,7 +200,8 @@ type
     size: vect_3d_t;                   {outer octree dimension for each axis}
     end;
 
-  type1_octree_data_user_data_t = record {user data for OCTREE data object}
+  type1_octree_data_crea_data_p_t = ^type1_octree_data_crea_data_t;
+  type1_octree_data_crea_data_t = record {creation data for OCTREE DATA object}
     shader: ray_shader_t;              {shader entry pointer, may be NIL}
     liparm_p: type1_liparm_p_t;        {pointer to light source block, may be NIL}
     visprop_p: type1_visprop_p_t;      {pointer to visprop block, may be NIL}
@@ -242,23 +250,19 @@ var (ray_type1)
 *   Entry points for objects.
 }
 procedure type1_3dfield_routines_make ( {fill in object routines block}
-  out     pointers: ray_object_routines_t; {block to fill in}
-  in      size: sys_int_adr_t);        {number of bytes in POINTERS}
+  out     pointers: ray_object_routines_t); {block to fill in}
   val_param; extern;
 
 procedure type1_list_routines_make (   {fill in object routines block}
-  out     pointers: ray_object_routines_t; {block to fill in}
-  in      size: sys_int_adr_t);        {number of bytes in POINTERS}
+  out     pointers: ray_object_routines_t); {block to fill in}
   val_param; extern;
 
 procedure type1_octree_routines_make ( {fill in object routines block}
-  out     pointers: ray_object_routines_t; {block to fill in}
-  in      size: sys_int_adr_t);        {number of bytes in POINTERS}
+  out     pointers: ray_object_routines_t); {block to fill in}
   val_param; extern;
 
 procedure type1_octree_data_routines_make ( {fill in object routines block}
-  out     pointers: ray_object_routines_t; {block to fill in}
-  in      size: sys_int_adr_t);        {number of bytes in POINTERS}
+  out     pointers: ray_object_routines_t); {block to fill in}
   val_param; extern;
 
 procedure type1_octree_geom (          {back door to stomp on octree geometry}
@@ -268,13 +272,11 @@ procedure type1_octree_geom (          {back door to stomp on octree geometry}
   val_param; extern;
 
 procedure type1_sphere_routines_make ( {fill in object routines block}
-  out     pointers: ray_object_routines_t; {block to fill in}
-  in      size: sys_int_adr_t);        {number of bytes in POINTERS}
+  out     pointers: ray_object_routines_t); {block to fill in}
   val_param; extern;
 
 procedure type1_tri_routines_make (    {fill in object routines block}
-  out     pointers: ray_object_routines_t; {block to fill in}
-  in      size: sys_int_adr_t);        {number of bytes in POINTERS}
+  out     pointers: ray_object_routines_t); {block to fill in}
   val_param; extern;
 {
 *   Entry points for shaders.

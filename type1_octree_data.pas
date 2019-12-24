@@ -3,215 +3,35 @@
 *   being built.
 }
 
-{   Type 1 OCTREE_DATA aggregate object.  The octree is rectangular and axis
-*   aligned.
+{   Type 1 OCTREE_DATA aggregate object.
 *
-*   The octree stucture itself is displayed instead of the objects referenced by
-*   the octree.  The data structure must have been previously set by object
-*   TYPE1_OCTREE.
+*   This object shows the octree voxel structure, not the data in the octree.
+*   The octree must be a previously created TYPE1_OCTREE object.
 }
 module type1_octree_data;
 define type1_octree_data_routines_make;
 %include 'ray_type1_2.ins.pas';
+%include 'type1_octree.ins.pas';
 
-const
-  obj_per_leaf_node = 5;               {number of object pointers in leaf node object}
-  obj_per_data_node = 8;               {num of object pointers in chained data node}
-  node_array_size = 30000;             {approximately 1 Mb worth of node descriptors}
-
-type
-  vect3_t = record case integer of     {3D vector with array overlay}
-    1:(                                {separate named fields}
-      x: real;
-      y: real;
-      z: real);
-    2:(                                {overlay array for arithmetic indexing}
-      coor: array[1..3] of real);
-    end;
-
-  node_p_t =                           {pointer to an octree node}
-    ^node_t;
-
-  node_t = record case integer of      {template for one octree node}
-    1:(                                {the node has been subdivided}
-      unused1: sys_int_machine_t;      {set to -1, overlay onto N_OBJ below}
-      node_p:                          {pntrs to child nodes, index msb is Z, lsb is X}
-        array[0..7] of node_p_t);      {NIL means child node is empty}
-    2:(                                {the node is a leaf node}
-      n_obj: sys_int_machine_t;        {total number of objects at this voxel}
-      hits: sys_int_machine_t;         {num of rays thru this voxel that hit something}
-      misses: sys_int_machine_t;       {num of rays thru this voxel that hit nothing}
-      obj_p:                           {pointers to objects at this voxel}
-        array[1..obj_per_leaf_node] of ray_object_p_t;
-      next_p: node_p_t);               {pointer to first chained data node}
-    3:(                                {the node is a chained data node}
-      ch_p:                            {more pointers to objects at this voxel}
-        array[1..obj_per_data_node] of ray_object_p_t;
-      unused2: node_p_t);              {use NEXT_P field above}
-    4:(                                {unused node, on the free nodes chain}
-      free_p: node_p_t);               {pointer to next node on free chain}
-    end;
-
-  node_array_t =                       {approximately 1Mb of node descriptors}
-    array[1..node_array_size] of node_t;
-
-  node_array_p_t =                     {pointer to a node array block}
-    ^node_array_t;
-
-  oct_obj_data_t = record              {OCTREE object's data record}
+  octdat_data_p_t = ^octdat_data_t;
+  octdat_data_t = record               {data record pointed to by object block}
     shader: ray_shader_t;              {pointer to shader entry point}
     liparm_p: type1_liparm_p_t;        {pointer to light source parameters block}
     visprop_p: type1_visprop_p_t;      {pointer to visual properties block}
-    min_gen: sys_int_machine_t;        {minimum subdivision level for non-empty voxels}
-    max_gen: sys_int_machine_t;        {max allowed voxel subdivision level 0 = none}
-    min_miss: sys_int_machine_t;       {min ray misses before subdividing}
-    origin: vect_3d_t;                 {most negative corner point for all 3 axis}
-    size: vect_3d_t;                   {outside octree size in each dimension}
-    recip_size: vect_3d_t;             {reciprocal size for each dimension}
-    box_err: vect_3d_t;                {amount to grow size of voxel intersect box}
-    box_err_half: vect_3d_t;           {amount to displace intersect box corner}
-    top_node_p: node_p_t;              {pointer to top level node}
-    ar_p: node_array_p_t;              {pointer to current nodes array}
-    n_ar: sys_int_machine_t;           {number of nodes used from current array so far}
-    free_p: node_p_t;                  {pointer to start of free chain}
-    next_p: ^ray_object_p_t;           {pointer to next obj pointer to fill in}
-    last_left: sys_int_machine_t;      {num of obj pointers left in last node of
-                                        chain.  Only valid before any subdivision}
-    end;
-
-  oct_obj_data_p_t =                   {pointer to OCTREE object data block}
-    ^oct_obj_data_t;
-
-  object_data_t = record               {data record pointer to by object block}
-    shader: ray_shader_t;              {pointer to shader entry point}
-    liparm_p: type1_liparm_p_t;        {pointer to light source parameters block}
-    visprop_p: type1_visprop_p_t;      {pointer to visual properties block}
-    oct_data_p: oct_obj_data_p_t;      {pointer to OCTREE object's data}
+    oct_data_p: oct_data_p_t;          {pointer to OCTREE object's data}
     box_size: real;                    {0 to 1 relative displayed voxel size}
     box_gap: real;                     {gap from displayed box to voxel edge}
     show_objects: boolean;             {objects in octree also displayed if TRUE}
     end;
 
-  object_data_p_t =                    {pointer to object data block}
-    ^object_data_t;
-
-  object_hit_info_t = record           {saved data from intersection check}
-    base: type1_hit_info_t;            {mandatory part of hit geometry save area}
+  priv_hit_info_p_t = ^priv_hit_info_t;
+  priv_hit_info_t = record             {our expanded hit info data}
+    base: type1_hit_info_t;            {standard hit into data}
     point: vect_3d_t;                  {intersection point}
     unorm: vect_3d_t;                  {unit normal at intersect point}
     end;
-
-  object_hit_geom_p_t =                {pointer to hit geometry block}
-    ^object_hit_info_t;
-
-procedure type1_octree_data_create (   {create new primitive with custom data}
-  out     object: ray_object_t;        {newly filled in object block}
-  in      data: type1_octree_data_user_data_t; {parameters from user}
-  out     stat: sys_err_t);            {completion status code}
-  val_param; forward;
-
-function type1_octree_data_intersect_check ( {check for ray/object intersection}
-  in out  ray: type1_ray_t;            {ray descriptor}
-  in      object: ray_object_t;        {object to intersect ray with}
-  in      uparms: type1_object_parms_t; {run-time parameters passed from above}
-  out     hit_info: ray_hit_info_t;    {all returned information}
-  out     shader: ray_shader_t)        {pointer to shader to resolve color}
-  :boolean;                            {TRUE if ray does hit object}
-  val_param; forward;
-
-procedure type1_octree_data_intersect_geom ( {return detailed geometry of intersection}
-  in      hit_info: ray_hit_info_t;    {data saved by INTERSECT_CHECK}
-  in      flags: ray_geom_flags_t;     {bit mask octree of what is being requested}
-  out     geom_info: ray_geom_info_t); {filled in geometric info}
-  val_param; forward;
-
-procedure type1_octree_data_version (  {return version information about object}
-  out     version: ray_object_version_t); {returned version information}
-  val_param; forward;
 {
-****************************************************************************
-*
-*   Subroutine TYPE1_OCTREE_ROUTINES_MAKE (POINTERS, SIZE)
-*
-*   Fill in the routines block for this class of objects.  SIZE is the size in bytes
-*   of the data structure to be filled in.
-}
-procedure type1_octree_data_routines_make ( {fill in object routines block}
-  out     pointers: ray_object_routines_t; {block to fill in}
-  in      size: sys_int_adr_t);        {number of bytes in POINTERS}
-  val_param;
-
-var
-  ents: sys_int_machine_t;             {number of routine entries in POINTERS}
-  i: sys_int_machine_t;                {loop counter}
-  max_ofs: sys_int_machine_t;          {byte offset of last entry in POINTERS}
-  p: ^ray_object_create_proc_t;        {pointer to a subroutine entry point}
-
-begin
-  ents := size div sizeof(p^);         {number of pointers in block}
-  p := univ_ptr(addr(pointers));       {init pointer to first entry in POINTERS}
-  for i := 1 to ents do begin          {once for each slot in POINTERS}
-    p^ := nil;                         {init this slot in POINTERS to the nil pointer}
-    p := univ_ptr(integer32(p)+sizeof(p^)); {point to next slot in POINTERS}
-    end;
-  max_ofs := (ents - 1)*4;             {byte offset of last entry}
-
-  if (sys_int_adr_t(addr(pointers.version))-sys_int_adr_t(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.version :=
-      ray_object_version_proc_t(addr(type1_octree_data_version));
-    ;
-  if (sys_int_adr_t(addr(pointers.create))-sys_int_adr_t(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.create :=
-      ray_object_create_proc_t(addr(type1_octree_data_create));
-    ;
-  if (sys_int_adr_t(addr(pointers.intersect_check))-sys_int_adr_t(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.intersect_check :=
-      ray_object_isect_check_proc_t(addr(type1_octree_data_intersect_check));
-    ;
-  if (sys_int_adr_t(addr(pointers.intersect_geom))-sys_int_adr_t(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.intersect_geom :=
-      ray_object_isect_geom_proc_t(addr(type1_octree_data_intersect_geom));
-    ;
-  end;
-{
-****************************************************************************
-*
-*   Local subroutine TYPE1_OCTREE_CREATE (OBJECT, DATA, STATUS)
-*
-*   Fill in the new object in OBJECT.  DATA is the user data parameters for
-*   this object.  STATUS is the standard system error return code.
-}
-procedure type1_octree_data_create (   {create new primitive with custom data}
-  out     object: ray_object_t;        {newly filled in object block}
-  in      data: type1_octree_data_user_data_t; {parameters from user}
-  out     stat: sys_err_t);            {completion status code}
-  val_param;
-
-var
-  data_p: object_data_p_t;             {pointer to internal object data}
-
-begin
-  sys_error_none (stat);               {init to no error}
-
-  util_mem_grab (                      {create new data block for this object}
-    sizeof(data_p^), ray_mem_p^, false, data_p);
-  data_p^.shader := data.shader;       {copy pointer to shader to use}
-  data_p^.liparm_p := data.liparm_p;   {copy pointer to light source block}
-  data_p^.visprop_p := data.visprop_p; {copy pointer to visual properties block}
-  data_p^.oct_data_p :=                {get pointer to OCTREE object's data block}
-    oct_obj_data_p_t(data.oct_obj_p^.data_p);
-  data_p^.box_size := data.box_size;   {copy relative size of displayed voxel}
-  data_p^.box_gap := (1.0-data.box_size)/2.0; {make voxel edge to box size gap}
-  data_p^.show_objects := data.show_objects; {copy show objects in octree flag}
-  object.data_p :=                     {set data pointer in object block}
-    ray_obj_data_p_t(data_p);
-  end;
-{
-****************************************************************************
+********************************************************************************
 *
 *   Local subroutine TYPE1_OCTREE_VERSION (VERSION)
 *
@@ -233,20 +53,55 @@ begin
   version.aggregate := false;
   end;
 {
-***************************************************************************************
+********************************************************************************
 *
-*   Local function TYPE1_OCTREE_INTERSECT_CHECK (RAY, OBJECT, UPARMS, HIT_INFO, SHADER)
+*   Local subroutine TYPE1_OCTREE_CREATE (OBJECT, CREA, STAT)
 *
-*   Check ray and object for an intersection.  If so, return TRUE, and save
-*   any partial results in HIT_INFO.  These partial results may be used later
-*   to get detailed information about the intersection geometry.
+*   Fill in the new object in OBJECT.  CREA is the user data parameters for this
+*   object.  STAT is the standard system error return code.
+}
+procedure type1_octree_data_create (   {create new primitive with custom data}
+  in out  object: ray_object_t;        {object to be filled in}
+  in var  crea: univ ray_crea_data_t;  {specific build-time data for this object}
+  out     stat: sys_err_t);            {completion status code}
+  val_param;
+
+var
+  crea_p: type1_octree_data_crea_data_p_t; {pointer to creation data, our format}
+  data_p: octdat_data_p_t;             {pointer to internal object data}
+
+begin
+  sys_error_none (stat);               {init to no error}
+  crea_p := univ_ptr(addr(crea));      {get pointer to creation data, our format}
+
+  util_mem_grab (                      {create new data block for this object}
+    sizeof(data_p^), ray_mem_p^, false, data_p);
+  data_p^.shader := crea_p^.shader;    {copy pointer to shader to use}
+  data_p^.liparm_p := crea_p^.liparm_p; {copy pointer to light source block}
+  data_p^.visprop_p := crea_p^.visprop_p; {copy pointer to visual properties block}
+  data_p^.oct_data_p :=                {get pointer to OCTREE object's data block}
+    oct_data_p_t(crea_p^.oct_obj_p^.data_p);
+  data_p^.box_size := crea_p^.box_size; {copy relative size of displayed voxel}
+  data_p^.box_gap := (1.0-crea_p^.box_size)/2.0; {make voxel edge to box size gap}
+  data_p^.show_objects := crea_p^.show_objects; {copy show objects in octree flag}
+  object.data_p := data_p;             {set data pointer in object block}
+  end;
+{
+********************************************************************************
+*
+*   Local function TYPE1_OCTREE_INTERSECT_CHECK (
+*     GRAY, OBJECT, GPARMS, HIT_INFO, SHADER)
+*
+*   Check ray and object for an intersection.  If so, return TRUE, and save any
+*   partial results in HIT_INFO.  These partial results may be used later to get
+*   detailed information about the intersection geometry.
 }
 function type1_octree_data_intersect_check ( {check for ray/object intersection}
-  in out  ray: type1_ray_t;            {ray descriptor}
-  in      object: ray_object_t;        {object to intersect ray with}
-  in      uparms: type1_object_parms_t; {run-time parameters passed from above}
-  out     hit_info: ray_hit_info_t;    {all returned information}
-  out     shader: ray_shader_t)        {pointer to shader to resolve color}
+  in out  gray: univ ray_desc_t;       {input ray descriptor}
+  in      object: ray_object_t;        {input object to intersect ray with}
+  in      gparms: univ ray_object_parms_t; {run time obj-specific parameters}
+  out     hit_info: ray_hit_info_t;    {handle to routines and data to get hit color}
+  out     shader: ray_shader_t)        {pointer to shader to resolve color here}
   :boolean;                            {TRUE if ray does hit object}
   val_param;
 
@@ -265,7 +120,9 @@ type
     end;
 
 var
-  data_p: object_data_p_t;             {pointer to object's specific data area}
+  ray_p: type1_ray_p_t;                {pointer to ray, our format}
+  parms_p: type1_object_parms_p_t;     {pointer to runtime parameters, our format}
+  data_p: octdat_data_p_t;             {pointer to object's specific data area}
   p: vect3_t;                          {ray point in 0 to 1 space}
   v: vect3_t;                          {non-uint ray vector in 0 to 1 space}
   rv: vect3_t;                         {reciprocal of V, =1E20 if V=0}
@@ -309,31 +166,35 @@ var
   dist: real;                          {scratch distance}
   d1, d2, d3, d4: real;                {ray distances to intersect points}
   hit_axis: integer32;                 {axis perpendicular to box plane that got hit}
-  hit_geom_p: object_hit_geom_p_t;     {pointer to hit geom block in MEM array}
+  hit_geom_p: priv_hit_info_p_t;       {pointer to hit geom block in MEM array}
 
 label
   got_p, new_coor, new_voxel, leaf_node, subdivide_voxel, trace_voxel, next_obj,
   next_coor, no_hit, not_hit_box, skip_objects, leave;
 
 begin
-  data_p := object_data_p_t(object.data_p); {make pointer to object's data area}
+  ray_p := univ_ptr(addr(gray));       {make pointer to ray, our format}
+  data_p := octdat_data_p_t(object.data_p); {make pointer to object's data area}
+  parms_p := univ_ptr(addr(gparms));   {make pointer to runtime parameters, our format}
+
   with                                 {set up abbreviations}
     data_p^:dd,
     data_p^.oct_data_p^:d
     do begin
 {
 *   Abbreviations:
-*   DD  -  Specific data block for this object
-*   D  -  Specidic data block for OCTREE object
+*
+*     DD  -  Specific data block for this object
+*     D  -  Specidic data block for OCTREE object
 *
 *   Now transform the ray into the (0,0,0) to (1,1,1) octree space.
 }
-  p.x := (ray.point.x + ray.vect.x*ray.min_dist - d.origin.x)*d.recip_size.x;
-  p.y := (ray.point.y + ray.vect.y*ray.min_dist - d.origin.y)*d.recip_size.y;
-  p.z := (ray.point.z + ray.vect.z*ray.min_dist - d.origin.z)*d.recip_size.z;
-  v.x := ray.vect.x*d.recip_size.x;    {transform ray vector to our space (not unity)}
-  v.y := ray.vect.y*d.recip_size.y;
-  v.z := ray.vect.z*d.recip_size.z;
+  p.x := (ray_p^.point.x + ray_p^.vect.x*ray_p^.min_dist - d.origin.x)*d.recip_size.x;
+  p.y := (ray_p^.point.y + ray_p^.vect.y*ray_p^.min_dist - d.origin.y)*d.recip_size.y;
+  p.z := (ray_p^.point.z + ray_p^.vect.z*ray_p^.min_dist - d.origin.z)*d.recip_size.z;
+  v.x := ray_p^.vect.x*d.recip_size.x; {transform ray vector to our space (not unity)}
+  v.y := ray_p^.vect.y*d.recip_size.y;
+  v.z := ray_p^.vect.z*d.recip_size.z;
   dist_m := 1.0/sqrt(                  {make octree to ray space ray length factor}
     sqr(v.x) + sqr(v.y) + sqr(v.z));
   v.x := v.x*dist_m;                   {make V a unit vector}
@@ -515,9 +376,9 @@ begin
       end
     ;
   dist_b := sqrt(                      {ray space distance from ray point to point P}
-    sqr(p.x*d.size.x + d.origin.x - ray.point.x) +
-    sqr(p.y*d.size.y + d.origin.y - ray.point.y) +
-    sqr(p.z*d.size.z + d.origin.z - ray.point.z) );
+    sqr(p.x*d.size.x + d.origin.x - ray_p^.point.x) +
+    sqr(p.y*d.size.y + d.origin.y - ray_p^.point.y) +
+    sqr(p.z*d.size.z + d.origin.z - ray_p^.point.z) );
 {
 *   P is the first point along the ray that is also inside the octree.  P is in the
 *   octree (0,0,0) to (1,1,1) space.
@@ -541,13 +402,13 @@ got_p:                                 {jump here if P started out inside octree
     ;                                  {done making MIN2 reciprocal slope}
   p1 := p;                             {save ray starting point inside octree}
   if dd.shader = nil                   {resolve shader pointer inheritance}
-    then parms.shader := uparms.shader
+    then parms.shader := parms_p^.shader
     else parms.shader := dd.shader;
   if dd.liparm_p = nil                 {resolve LIPARM pointer inheritance}
-    then parms.liparm_p := uparms.liparm_p
+    then parms.liparm_p := parms_p^.liparm_p
     else parms.liparm_p := dd.liparm_p;
   if dd.visprop_p = nil                {resolve VISPROP pointer inheritance}
-    then parms.visprop_p := uparms.visprop_p
+    then parms.visprop_p := parms_p^.visprop_p
     else parms.visprop_p := dd.visprop_p;
   n_cached := 0;                       {init checked objects cache to empty}
   next_cache := 1;                     {init where to cache next checked obj pointer}
@@ -555,7 +416,7 @@ got_p:                                 {jump here if P started out inside octree
   old_mem := next_mem;                 {save MEM index before any obj save blocks}
 {
 *   Point P1 has been set to the first point along the ray inside the octree.  This
-*   will be used later to recompute subsequent points along the ray.
+*   will be used later to recompute subsequent points along the ray_p^.
 *
 *   Point P contains the floating point coordinates at which to check for objects
 *   to intersect the ray with.  First convert these to integer coordinates that can
@@ -620,17 +481,17 @@ trace_voxel:                           {jump here to trace ray thru voxel at VP}
     + d.origin.y;
   box.point.z := ((coor_mask & icoor.z)*3.051758E-5 + sz*dd.box_gap)*d.size.z
     + d.origin.z;
-  p2.x := box.point.x - ray.point.x;   {make vector from box corner to ray}
-  p2.y := box.point.y - ray.point.y;
-  p2.z := box.point.z - ray.point.z;
-  dist := p2.coor[maj]/ray.vect.coor[maj]; {MAJ ray distance to box corner MAJ plane}
-  if ray.vect.coor[maj] >= 0.0         {check ray direction along MAJ axis}
+  p2.x := box.point.x - ray_p^.point.x; {make vector from box corner to ray}
+  p2.y := box.point.y - ray_p^.point.y;
+  p2.z := box.point.z - ray_p^.point.z;
+  dist := p2.coor[maj]/ray_p^.vect.coor[maj]; {MAJ ray distance to box corner MAJ plane}
+  if ray_p^.vect.coor[maj] >= 0.0      {check ray direction along MAJ axis}
     then begin                         {ray is heading towards positive MAJ}
       d1 := dist;                      {ray distance to first MAJ plane}
-      d2 := dist + box.edge[maj].width/ray.vect.coor[maj]; {ray dist to 2nd MAJ plane}
+      d2 := dist + box.edge[maj].width/ray_p^.vect.coor[maj]; {ray dist to 2nd MAJ plane}
       end
     else begin                         {ray is heading towards negative MAJ}
-      d1 := dist + box.edge[maj].width/ray.vect.coor[maj]; {ray dist to 1st MAJ plane}
+      d1 := dist + box.edge[maj].width/ray_p^.vect.coor[maj]; {ray dist to 1st MAJ plane}
       d2 := dist;                      {ray distance to second MAJ plane}
       end
     ;
@@ -642,15 +503,15 @@ trace_voxel:                           {jump here to trace ray thru voxel at VP}
 *   distance D1.  HIT_AXIS is kept current to indicate which axis plane clip D1
 *   represents.
 }
-  if abs(ray.vect.coor[min1]) > 1E-6 then begin {ray not paralell to this axis ?}
-    if ray.vect.coor[min1] >= 0.0      {check ray direction along MIN1 axis}
+  if abs(ray_p^.vect.coor[min1]) > 1.0e-6 then begin {ray not paralell to this axis ?}
+    if ray_p^.vect.coor[min1] >= 0.0   {check ray direction along MIN1 axis}
       then begin                       {ray is heading in positive MIN1 direction}
-        d3 := p2.coor[min1]/ray.vect.coor[min1];
-        d4 := d3 + box.edge[min1].width/ray.vect.coor[min1];
+        d3 := p2.coor[min1]/ray_p^.vect.coor[min1];
+        d4 := d3 + box.edge[min1].width/ray_p^.vect.coor[min1];
         end
       else begin                       {ray is heading in negative MIN1 direction}
-        d4 := p2.coor[min1]/ray.vect.coor[min1];
-        d3 := d4 + box.edge[min1].width/ray.vect.coor[min1];
+        d4 := p2.coor[min1]/ray_p^.vect.coor[min1];
+        d3 := d4 + box.edge[min1].width/ray_p^.vect.coor[min1];
         end
       ;
     if d3 > d1 then begin
@@ -659,15 +520,15 @@ trace_voxel:                           {jump here to trace ray thru voxel at VP}
       end;
     if d4 < d2 then d2 := d4;
     end;                               {done with ray not paralell to MIN1 plane}
-  if abs(ray.vect.coor[min2]) > 1E-6 then begin {ray not paralell to this axis ?}
-    if ray.vect.coor[min2] >= 0.0      {check ray direction along MIN2 axis}
+  if abs(ray_p^.vect.coor[min2]) > 1.0e-6 then begin {ray not paralell to this axis ?}
+    if ray_p^.vect.coor[min2] >= 0.0   {check ray direction along MIN2 axis}
       then begin                       {ray is heading in positive MIN2 direction}
-        d3 := p2.coor[min2]/ray.vect.coor[min2];
-        d4 := d3 + box.edge[min2].width/ray.vect.coor[min2];
+        d3 := p2.coor[min2]/ray_p^.vect.coor[min2];
+        d4 := d3 + box.edge[min2].width/ray_p^.vect.coor[min2];
         end
       else begin                       {ray is heading in negative MIN2 direction}
-        d4 := p2.coor[min2]/ray.vect.coor[min2];
-        d3 := d4 + box.edge[min2].width/ray.vect.coor[min2];
+        d4 := p2.coor[min2]/ray_p^.vect.coor[min2];
+        d3 := d4 + box.edge[min2].width/ray_p^.vect.coor[min2];
         end
       ;
     if d3 > d1 then begin
@@ -677,20 +538,20 @@ trace_voxel:                           {jump here to trace ray thru voxel at VP}
     if d4 < d2 then d2 := d4;
     end;                               {done with ray not paralell to MIN2 plane}
   if d1 > d2 then goto not_hit_box;    {ray does not hit the voxel box at all ?}
-  if (d1 < ray.min_dist) or (d1 > ray.max_dist)
+  if (d1 < ray_p^.min_dist) or (d1 > ray_p^.max_dist)
     then goto not_hit_box;             {hit point not inside legal interval}
 {
 *   The ray has hit the box.
 }
   hit := true;                         {indicate that this ray hit something}
-  ray.max_dist := d1;                  {only closer hits are allowed from now on}
+  ray_p^.max_dist := d1;               {only closer hits are allowed from now on}
   hit_info.object_p := addr(object);   {return handle to object that got hit}
   hit_info.distance := d1;             {fill in ray distance to hit point}
   hit_info.enter := true;
-  hit_geom_p := addr(mem[next_mem]);   {get pointer to hit geom block}
-  next_mem := ((sizeof(object_hit_info_t)+3) & 16#0FFFFFFFC)
+  hit_geom_p := univ_ptr(addr(mem[next_mem])); {get pointer to hit geom block}
+  next_mem := ((sizeof(priv_hit_info_t)+3) & 16#0FFFFFFFC)
     + next_mem;                        {allocate 4 byte chunks for HIT_GEOM block}
-  visprop_p := addr(mem[next_mem]);    {allocate space for customized visprop block}
+  visprop_p := univ_ptr(addr(mem[next_mem])); {allocate space for customized visprop block}
   next_mem := ((sizeof(type1_visprop_t)+3) & 16#0FFFFFFFC)
     + next_mem;                        {allocate 4 byte chunks for HIT_GEOM block}
   if next_mem > mem_block_size then begin {not enough room for HIT_GEOM block ?}
@@ -703,13 +564,13 @@ trace_voxel:                           {jump here to trace ray thru voxel at VP}
     ray_shader_parms_p_t(hit_geom_p);
   hit_geom_p^.base.liparm_p := parms.liparm_p;
   hit_geom_p^.base.visprop_p := visprop_p;
-  hit_geom_p^.point.x := ray.point.x + ray.vect.x*d1;
-  hit_geom_p^.point.y := ray.point.y + ray.vect.y*d1;
-  hit_geom_p^.point.z := ray.point.z + ray.vect.z*d1;
+  hit_geom_p^.point.x := ray_p^.point.x + ray_p^.vect.x*d1;
+  hit_geom_p^.point.y := ray_p^.point.y + ray_p^.vect.y*d1;
+  hit_geom_p^.point.z := ray_p^.point.z + ray_p^.vect.z*d1;
   hit_geom_p^.unorm.x := 0.0;          {init hit point normal vector}
   hit_geom_p^.unorm.y := 0.0;
   hit_geom_p^.unorm.z := 0.0;
-  if ray.vect.coor[hit_axis] > 0.0
+  if ray_p^.vect.coor[hit_axis] > 0.0
     then hit_geom_p^.unorm.coor[hit_axis] := -1.0
     else hit_geom_p^.unorm.coor[hit_axis] := 1.0;
   shader := parms.shader;
@@ -830,7 +691,7 @@ next_coor:                             {jump here to step to the next voxel}
       end
     ;
   if dmin < max_odist then max_odist := dmin; {clip max dist in voxel to shortest}
-  if (max_odist*dist_m+dist_b) >= ray.max_dist then begin {ray ends in this voxel ?}
+  if (max_odist*dist_m+dist_b) >= ray_p^.max_dist then begin {ray ends in this voxel ?}
     goto leave;
     end;                               {done with ray ending in this voxel}
   icoor.x := round((p1.x + v.x*max_odist)*32768.0-0.5);
@@ -865,12 +726,12 @@ no_hit:
   end;                                 {done with abbreviations}
   end;
 {
-****************************************************************************
+********************************************************************************
 *
 *   Local subroutine TYPE1_OCTREE_INTERSECT_GEOM (HIT_INFO, FLAGS, GEOM_INFO)
 *
-*   Return specific geometric information about a ray/object intersection
-*   in GEOM_INFO.  In HIT_INFO are any useful results left by the ray/object
+*   Return specific geometric information about a ray/object intersection in
+*   GEOM_INFO.  In HIT_INFO are any useful results left by the ray/object
 *   intersection check calculation.  FLAGS identifies what specific geometric
 *   information is being requested.
 }
@@ -881,12 +742,12 @@ procedure type1_octree_data_intersect_geom ( {return detailed geometry of inters
   val_param;
 
 var
-  hit_geom_p: object_hit_geom_p_t;     {pointer to hit geometry block}
+  hit_geom_p: priv_hit_info_p_t;       {pointer to hit geometry block}
 
 begin
   geom_info.flags := [];               {init what info we returned indicator}
   hit_geom_p :=                        {pointer to HIT_GEOM block}
-    object_hit_geom_p_t(hit_info.shader_parms_p);
+    priv_hit_info_p_t(hit_info.shader_parms_p);
   with                                 {define abbreviations}
     hit_geom_p^:hit_geom               {object specific hit geometry block}
       do begin
@@ -910,4 +771,23 @@ begin
     geom_info.unorm := hit_geom.unorm;
     end;                               {done returning unit surface normal}
   end;                                 {done using abbreviations}
+  end;
+{
+********************************************************************************
+*
+*   Subroutine TYPE1_OCTREE_DATA_ROUTINES_MAKE (POINTERS, SIZE)
+*
+*   Fill in the routines block for this class of objects.
+}
+procedure type1_octree_data_routines_make ( {fill in object routines block}
+  out     pointers: ray_object_routines_t); {block to fill in}
+  val_param;
+
+begin
+  pointers.create := addr(type1_octree_data_create);
+  pointers.version := addr(type1_octree_data_version);
+  pointers.intersect_check := addr(type1_octree_data_intersect_check);
+  pointers.intersect_geom := addr(type1_octree_data_intersect_geom);
+  pointers.intersect_box := addr(type1_octree_data_intersect_box);
+  pointers.add_child := addr(type1_octree_data_add_child);
   end;
