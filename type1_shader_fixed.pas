@@ -7,8 +7,8 @@ define type1_shader_fixed;
 %include 'ray_type1_2.ins.pas';
 
 procedure type1_shader_fixed (         {always returns fixed color, used for backg}
-  in      ray: type1_ray_t;            {handle to the ray}
-  in      hit_info: ray_hit_info_t;    {info about specific intersection}
+  in var  ray: type1_ray_t;            {handle to the ray}
+  in var  hit_info: ray_hit_info_t;    {info about specific intersection}
   out     color: type1_color_t);       {returned ray color}
 
 var

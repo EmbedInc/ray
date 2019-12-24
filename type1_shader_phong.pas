@@ -1,16 +1,16 @@
-{   Subroutine TYPE1_SHADER_PHONG (RAY,HIT_INFO,COLOR)
+{   Subroutine TYPE1_SHADER_PHONG (RAY, HIT_INFO, COLOR)
 *
-*   Return the ray color for a given intersection in COLOR.  RAY is
-*   the ray descriptor.  HIT_INFO is all the intermediate data returned
-*   by the object intersect check routine.
+*   Return the ray color for a given intersection in COLOR.  RAY is the ray
+*   descriptor.  HIT_INFO is all the intermediate data returned by the object
+*   intersect check routine.
 }
 module type1_shader_phong;
 define type1_shader_phong;
 %include 'ray_type1_2.ins.pas';
 
 procedure type1_shader_phong (         {shader using Phong lighting model}
-  in      ray: type1_ray_t;            {handle to the ray}
-  in      hit_info: ray_hit_info_t;    {info about specific intersection}
+  in var  ray: type1_ray_t;            {handle to the ray}
+  in var  hit_info: ray_hit_info_t;    {info about specific intersection}
   out     color: type1_color_t);       {returned ray color}
 
 const
@@ -38,12 +38,12 @@ var
 label
   done_spec, leave;
 {
-***************************************************
+********************************************************************************
 *
 *   Local subroutine LIGHT_RAY
 *
-*   Determine the coupling factor between the hit point and a light source.
-*   A ray will be launched to a light source to determine the coupling factor.
+*   Determine the coupling factor between the hit point and a light source.  A
+*   ray will be launched to a light source to determine the coupling factor.
 *   The following fields are assumed to be set in RAY2, which will be the
 *   descriptor for the recusive ray:
 *
@@ -55,8 +55,8 @@ label
 *
 *     MAX_DIST  -  Distance to the light source.
 *
-*   RAY2.ENERGY will be the returned coupling factor for this light source into the
-*   final top generation ray color.  It will be 0.0 when the light source is
+*   RAY2.ENERGY will be the returned coupling factor for this light source into
+*   the final top generation ray color.  It will be 0.0 when the light source is
 *   completely occluded, and ALPHA when it is completely visible from the hit
 *   point.
 }
@@ -83,13 +83,13 @@ hit_loop:                              {back here after each new hit}
     ray2.energy := 0.0;
     return;
     end;
-  if                                   {ray finally got to the light source ?}
-      not ray2.base.context_p^.top_level_obj_p^.routines_p^.intersect_check^ ( {hit ?}
-      ray2,                            {the ray descriptor}
-      ray2.base.context_p^.top_level_obj_p^, {object to intersect ray with}
-      ray2.base.context_p^.object_parms_p^, {run time parameters for top level object}
-      hit_info,                        {specific data returned about this hit}
-      shader)                          {unused, we just want to know if it hit}
+  if not                               {hit nothing, so got to the light source ?}
+      ray2.base.context_p^.top_level_obj_p^.routines_p^.intersect_check^ ( {hit ?}
+        ray2,                          {the ray descriptor}
+        ray2.base.context_p^.top_level_obj_p^, {object to intersect ray with}
+        ray2.base.context_p^.object_parms_p^, {run time parameters for top level object}
+        hit_info,                      {specific data returned about this hit}
+        shader)                        {unused, we just want to know if it hit}
     then return;                       {RAY2.ENERGY is all set}
 {
 *   This light ray hit something on the way to the light source.
@@ -130,7 +130,7 @@ hit_loop:                              {back here after each new hit}
   end;                                 {done with VISPROP abbreviation}
   end;
 {
-***************************************************
+********************************************************************************
 *
 *   Start of main routine.
 }
@@ -177,10 +177,10 @@ begin
   ray2.base := ray.base;               {copy over the mandatory fields}
   ray2.generation := ray.generation+1; {this is yet another recursive ray generation}
 {
-*   Init the returned color to the emissive color and whatever is shining
-*   thru the object.  Our local value ALPHA will be set to the 1.0 to 0.0
-*   weighted opacity fraction for later use.  This will take into account
-*   the weighting of the original ray.
+*   Init the returned color to the emissive color and whatever is shining thru
+*   the object.  Our local value ALPHA will be set to the 1.0 to 0.0 weighted
+*   opacity fraction for later use.  This will take into account the weighting
+*   of the original ray.
 }
   if visprop.opac_on
     then begin                         {transparency is enabled}
@@ -329,8 +329,8 @@ otherwise
 *       at hit point.  These are the color contributions to the top level ray
 *       for the full light at the hit point.
 *
-*   Now handle the surface properties that are a function of the incoming
-*   light.  VISPROP is the visual properties block.
+*   Now handle the surface properties that are a function of the incoming light.
+*   VISPROP is the visual properties block.
 *
 *   Diffuse reflections.
 }

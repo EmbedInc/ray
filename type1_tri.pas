@@ -30,7 +30,7 @@ type
 
   tri_hit_geom_p_t = ^tri_hit_geom_t;
   tri_hit_geom_t = record              {saved data from intersection check}
-    base: type1_hit_info_t;            {mandatory part of hit geometry save area}
+    base: type1_hit_geom_t;            {mandatory part of hit geometry save area}
     data_p: tri_data_p_t;              {pointer to object's private data block}
     hpnt: vect_3d_t;                   {hit point in object's space}
     hitx, hity: real;                  {hit point in triangle canonical space}
@@ -222,8 +222,8 @@ begin
 }
 function type1_tri_intersect_check (   {check for ray/object intersection}
   in out  gray: univ ray_desc_t;       {input ray descriptor}
-  in      object: ray_object_t;        {input object to intersect ray with}
-  in      gparms: univ ray_object_parms_t; {run time obj-specific parameters}
+  in var  object: ray_object_t;        {input object to intersect ray with}
+  in var  gparms: univ ray_object_parms_t; {run time obj-specific parameters}
   out     hit_info: ray_hit_info_t;    {handle to routines and data to get hit color}
   out     shader: ray_shader_t)        {pointer to shader to resolve color here}
   :boolean;                            {TRUE if ray does hit object}

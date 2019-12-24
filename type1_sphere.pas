@@ -13,9 +13,9 @@ type
     radius2: single;                   {sphere radius squared}
     end;
 
-  sphere_hit_geom_p_t = ^sphere_hit_info_t;
-  sphere_hit_info_t = record           {saved data from intersection check}
-    base: type1_hit_info_t;            {mandatory part of hit geometry save area}
+  sphere_hit_geom_p_t = ^sphere_hit_geom_t;
+  sphere_hit_geom_t = record           {saved data from intersection check}
+    base: type1_hit_geom_t;            {mandatory part of hit geometry save area}
     ray_point: vect_3d_t;              {ray origin point in object's space}
     ray_vect: vect_3d_t;               {ray unit vector in object's space}
     end;
@@ -86,8 +86,8 @@ begin
 }
 function type1_sphere_intersect_check ( {check for ray/object intersection}
   in out  gray: univ ray_desc_t;       {input ray descriptor}
-  in      object: ray_object_t;        {input object to intersect ray with}
-  in      gparms: univ ray_object_parms_t; {run time obj-specific parameters}
+  in var  object: ray_object_t;        {input object to intersect ray with}
+  in var  gparms: univ ray_object_parms_t; {run time obj-specific parameters}
   out     hit_info: ray_hit_info_t;    {handle to routines and data to get hit color}
   out     shader: ray_shader_t)        {pointer to shader to resolve color here}
   :boolean;                            {TRUE if ray does hit object}

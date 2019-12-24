@@ -46,19 +46,15 @@ type
     distance: real;                    {ray distance to hit point}
     shader_parms_p: ray_shader_parms_p_t; {pointer to parameters for the shader}
     enter: boolean;                    {TRUE if ray is entering object, not leaving}
-    unused1: boolean;
-    unused2: boolean;
-    unused3: boolean;
     end;
 
   ray_color_t =                        {template for application-specific color}
     integer32;                         {kernel just deals with pointers to this}
 
 ray_shader_t = ^procedure (            {resolve color given hit info}
-  in      ray: ray_desc_t;             {unique info about this ray}
-  in      hit_info: ray_hit_info_t;    {unique info about this ray/object hit}
-  out     color: ray_color_t);         {each shader can have its own color format}
-  val_param;
+  in var  ray: univ ray_desc_t;        {unique info about this ray}
+  in var  hit_info: univ ray_hit_info_t; {unique info about this ray/object hit}
+  out     color: univ ray_color_t);    {each shader can have its own color format}
 
   ray_shader_parms_t =                 {template for run time data for shader}
     integer32;                         {kernel just deals with pointers to this}
@@ -164,8 +160,8 @@ ray_object_version_proc_t = ^procedure ( {return version info of this object}
 
 ray_object_isect_check_proc_t = ^function ( {check for ray hit this object}
   in out  gray: univ ray_desc_t;       {input ray descriptor}
-  in      object: ray_object_t;        {input object to intersect ray with}
-  in      gparms: univ ray_object_parms_t; {run time obj-specific parameters}
+  in var  object: ray_object_t;        {input object to intersect ray with}
+  in var  gparms: univ ray_object_parms_t; {run time obj-specific parameters}
   out     hit_info: ray_hit_info_t;    {handle to routines and data to get hit color}
   out     shader: ray_shader_t)        {pointer to shader to resolve color here}
   :boolean;                            {TRUE if ray hit this object}

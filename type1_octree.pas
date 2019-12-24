@@ -159,11 +159,11 @@ begin
 *   detailed information about the intersection geometry.
 }
 function type1_octree_intersect_check ( {check for ray/object intersection}
-  in out  gray: univ ray_desc_t;       {ray descriptor}
-  in      object: ray_object_t;        {object to intersect ray with}
-  in      gparms: univ ray_object_parms_t; {run-time parameters passed from above}
-  out     hit_info: ray_hit_info_t;    {all returned information}
-  out     shader: ray_shader_t)        {pointer to shader to resolve color}
+  in out  gray: univ ray_desc_t;       {input ray descriptor}
+  in var  object: ray_object_t;        {input object to intersect ray with}
+  in var  gparms: univ ray_object_parms_t; {run time obj-specific parameters}
+  out     hit_info: ray_hit_info_t;    {handle to routines and data to get hit color}
+  out     shader: ray_shader_t)        {pointer to shader to resolve color here}
   :boolean;                            {TRUE if ray does hit object}
   val_param;
 
@@ -719,7 +719,7 @@ subdivide_voxel:
   vp := newp;                          {set the resulting subdivided voxel as current}
   goto new_voxel;                      {back and process this new subdivided voxel}
 {
-*   VP is pointing at a the leaf node voxel that the ray is supposed to be traced
+*   VP is pointing at a leaf node voxel that the ray is supposed to be traced
 *   thru.
 }
 trace_voxel:                           {jump here to trace ray thru voxel at VP}

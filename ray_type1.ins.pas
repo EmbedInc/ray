@@ -98,13 +98,11 @@ type
   type1_liparm_p_t =                   {pointer to light source parameters block}
     ^type1_liparm_t;
 
-  type1_hit_info_t = record            {TYPE1 minimum hit geometry save block}
+  type1_hit_geom_p_t = ^type1_hit_geom_t;
+  type1_hit_geom_t = record            {TYPE1 minimum hit geometry save block}
     liparm_p: type1_liparm_p_t;        {pointer to light source parameters block}
     visprop_p: type1_visprop_p_t;      {pointer to visual properties block}
     end;
-
-  type1_hit_geom_p_t =                 {pointer to internal hit geometry block}
-    ^type1_hit_info_t;
 
   type1_object_parms_p_t = ^type1_object_parms_t;
   type1_object_parms_t = record        {runtime parameters for INTERSECT_CHECK}
@@ -282,16 +280,16 @@ procedure type1_tri_routines_make (    {fill in object routines block}
 *   Entry points for shaders.
 }
 procedure type1_shader_fixed (         {always returns fixed color, used for backg}
-  in      ray: type1_ray_t;            {handle to the ray}
-  in      hit_info: ray_hit_info_t;    {info about specific intersection}
+  in var  ray: type1_ray_t;            {handle to the ray}
+  in var  hit_info: ray_hit_info_t;    {info about specific intersection}
   out     color: type1_color_t);       {returned ray color}
-  val_param; extern;
+  extern;
 
 procedure type1_shader_phong (         {shader using Phong lighting model}
-  in      ray: type1_ray_t;            {handle to the ray}
-  in      hit_info: ray_hit_info_t;    {info about specific intersection}
+  in var  ray: type1_ray_t;            {handle to the ray}
+  in var  hit_info: ray_hit_info_t;    {info about specific intersection}
   out     color: type1_color_t);       {returned ray color}
-  val_param; extern;
+  extern;
 {
 *   Other entry points.
 }
