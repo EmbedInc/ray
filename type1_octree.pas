@@ -84,7 +84,7 @@ begin
 }
 procedure type1_octree_create (        {create new primitive with custom data}
   in out  object: ray_object_t;        {newly filled in object block}
-  in var  crea: univ ray_crea_data_t;  {data for creating the new object}
+  in      gcrea_p: univ_ptr;           {data for creating this object instance}
   out     stat: sys_err_t);            {completion status code}
   val_param;
 
@@ -98,7 +98,7 @@ var
 begin
   sys_error_none (stat);               {init to no error}
 
-  crea_p := univ_ptr(addr(crea));      {pointer to our specific creation data}
+  crea_p := gcrea_p;                   {pointer to our specific creation data}
 
   sz := sizeof(data_p^);               {amount of memory to allocate}
   util_mem_grab (                      {allocate data block for new object}
@@ -161,7 +161,7 @@ begin
 function type1_octree_intersect_check ( {check for ray/object intersection}
   in out  gray: univ ray_desc_t;       {input ray descriptor}
   in var  object: ray_object_t;        {input object to intersect ray with}
-  in var  gparms: univ ray_object_parms_t; {run time obj-specific parameters}
+  in      gparms_p: univ_ptr;          {pointer to run time TYPEn-specific params}
   out     hit_info: ray_hit_info_t;    {handle to routines and data to get hit color}
   out     shader: ray_shader_t)        {pointer to shader to resolve color here}
   :boolean;                            {TRUE if ray does hit object}
@@ -243,7 +243,7 @@ label
 begin
   data_p := oct_data_p_t(object.data_p); {make pointer to object's data area}
   ray_p := univ_ptr(addr(gray));       {pointer to ray descriptor}
-  uparms_p := univ_ptr(addr(gparms));  {pointer to runtime parameters for this object}
+  uparms_p := gparms_p;                {pointer to runtime parameters for this object}
   with                                 {set up abbreviations}
     data_p^:d,
     ray_p^:ray
@@ -739,7 +739,7 @@ trace_voxel:                           {jump here to trace ray thru voxel at VP}
     if obj_pp^^.routines_p^.intersect_check^ ( {run object's intersect check routine}
         ray,                           {the ray to intersect object with}
         obj_pp^^,                      {the object to intersect ray with}
-        parms,                         {run time specific parameters}
+        addr(parms),                   {run time specific parameters}
         hit_info,                      {partial results returned}
         shader)                        {returned shader}
       then begin                       {the ray did hit the object}

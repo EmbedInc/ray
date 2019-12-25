@@ -83,8 +83,8 @@ begin
 *   Create a new instance of the TRI (triangle) object.
 }
 procedure type1_tri_create (           {create new primitive with custom data}
-  in out  object: ray_object_t;        {object to be filled in}
-  in var  crea: univ ray_crea_data_t;  {specific build-time data for this object}
+  in out  object: ray_object_t;        {object instance to be filled in}
+  in      gcrea_p: univ_ptr;           {data for creating this object instance}
   out     stat: sys_err_t);            {completion status code}
   val_param;
 
@@ -103,7 +103,7 @@ var
 
 begin
   sys_error_none (stat);               {init to no error}
-  crea_p := univ_ptr(addr(crea));      {make pointer to creation data, our format}
+  crea_p := gcrea_p;                   {make pointer to creation data, our format}
 {
 *   To find the transform from the object's space to the canonical space, we
 *   will construct the canonical to object transform and then take its inverse.
@@ -240,7 +240,7 @@ begin
 function type1_tri_intersect_check (   {check for ray/object intersection}
   in out  gray: univ ray_desc_t;       {input ray descriptor}
   in var  object: ray_object_t;        {input object to intersect ray with}
-  in var  gparms: univ ray_object_parms_t; {run time obj-specific parameters}
+  in      gparms_p: univ_ptr;          {pointer to run time TYPEn-specific params}
   out     hit_info: ray_hit_info_t;    {handle to routines and data to get hit color}
   out     shader: ray_shader_t)        {pointer to shader to resolve color here}
   :boolean;                            {TRUE if ray does hit object}
@@ -262,7 +262,7 @@ label
 
 begin
   ray_p := univ_ptr(addr(gray));       {make pointer to ray info, our format}
-  parms_p := univ_ptr(addr(gparms));   {make poitner to runtime parameters, our format}
+  parms_p := gparms_p;                 {make poitner to runtime parameters, our format}
 
   stats_tri.isect_ray := stats_tri.isect_ray + 1; {one more ray intersect check}
   dp := object.data_p;                 {make local pointer to private data}
@@ -309,8 +309,7 @@ begin
 
   hit_info.object_p := addr(object);   {return handle to object that got hit}
   hit_info.distance := dis;            {ray distance to hit point}
-  hit_info.shader_parms_p :=           {fill in pointer to hit geometry save area}
-    ray_shader_parms_p_t(hit_geom_p);
+  hit_info.shader_parms_p := hit_geom_p; {fill in pointer to hit geometry save area}
   if dp^.visprop_p <> nil              {check where to get visprop pointer from}
     then hit_geom_p^.base.visprop_p := dp^.visprop_p {get it from object data}
     else hit_geom_p^.base.visprop_p := parms_p^.visprop_p; {from run-time parameters}

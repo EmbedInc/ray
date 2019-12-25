@@ -51,7 +51,7 @@ begin
 }
 procedure type1_sphere_create (        {create new primitive with custom data}
   in out  object: ray_object_t;        {object to be filled in}
-  in var  crea: univ ray_crea_data_t;  {specific build-time data for this object}
+  in      gcrea_p: univ_ptr;           {data for creating this object instance}
   out     stat: sys_err_t);            {completion status code}
   val_param;
 
@@ -61,7 +61,7 @@ var
 
 begin
   sys_error_none (stat);               {init to no error}
-  crea_p := univ_ptr(addr(crea));      {get pointer to create data in our format}
+  crea_p := gcrea_p;                   {get pointer to create data in our format}
 
   util_mem_grab (                      {allocate data block for new object}
     sizeof(data_p^), ray_mem_p^, false, data_p);
@@ -87,7 +87,7 @@ begin
 function type1_sphere_intersect_check ( {check for ray/object intersection}
   in out  gray: univ ray_desc_t;       {input ray descriptor}
   in var  object: ray_object_t;        {input object to intersect ray with}
-  in var  gparms: univ ray_object_parms_t; {run time obj-specific parameters}
+  in      gparms_p: univ_ptr;          {pointer to run time TYPEn-specific params}
   out     hit_info: ray_hit_info_t;    {handle to routines and data to get hit color}
   out     shader: ray_shader_t)        {pointer to shader to resolve color here}
   :boolean;                            {TRUE if ray does hit object}
@@ -109,7 +109,7 @@ label
 begin
   ray_p := univ_ptr(addr(gray));       {make pointer to ray, our format}
   dp := object.data_p;                 {make local pointer to object data, our format}
-  parms_p := univ_ptr(addr(gparms));   {make pointer to runtime parameters, our format}
+  parms_p := gparms_p;                 {make pointer to runtime parameters, our format}
 
   close_l :=                           {make ray length to closest approach}
     (ray_p^.vect.x * (dp^.center.x - ray_p^.point.x)) +
@@ -169,8 +169,7 @@ hit:
     writeln ('Insufficient space in array MEM (RAY_TYPE1_2.INS.PAS).');
     sys_bomb;                          {save traceback info and abort}
     end;
-  hit_info.shader_parms_p :=           {fill in pointer to hit geometry save area}
-    ray_shader_parms_p_t(hit_geom_p);
+  hit_info.shader_parms_p := hit_geom_p; {fill in pointer to hit geometry save area}
   hit_geom_p^.base.liparm_p := parms_p^.liparm_p; {from run-time parameters}
   if dp^.visprop_p <> nil              {check where to get visprop pointer from}
     then hit_geom_p^.base.visprop_p := dp^.visprop_p {get it from object data}

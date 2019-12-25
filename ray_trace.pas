@@ -15,8 +15,8 @@ define ray_trace;
 %include 'ray2.ins.pas';
 
 procedure ray_trace (
-  in out  ray: univ ray_desc_t;        {everything you need to know about one ray}
-  out     color: univ ray_color_t);    {returned color}
+  in out  ray: univ ray_desc_t;        {the ray to trace}
+  out     color: univ sys_int_machine_t); {returned color, format defined by TYPEn}
   val_param;
 
 var
@@ -31,7 +31,7 @@ begin
   if ray.context_p^.top_level_obj_p^.routines_p^.intersect_check^ ( {hit something ?}
       ray,                             {all the information about this ray}
       ray.context_p^.top_level_obj_p^, {object to intersect ray with}
-      ray.context_p^.object_parms_p^,  {parameters for top level object}
+      ray.context_p^.object_parms_p,   {parameters for top level object}
       hit_info,                        {specific data returned about this hit}
       shader)                          {routine to call to get hit color}
 {

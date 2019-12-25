@@ -1,109 +1,59 @@
-{   Ray tracer kernel.
+{   Public include file for the base part of the ray tracer.
 *
-*   This include file defines all the data structures that are dictated by the
-*   ray tracer kernel.  All other data structures are defined by convention
-*   between the object routines, the shaders, and the calling program to
-*   RAY_TRACE.
+*   The high level routines and the basic interfaces between the components are
+*   defined here.  This does not include details of ray geometry, what a color
+*   is, and the like.  No actual ray-tracable objects or shaders are included.
+*
+*   Any actual ray tracer implementation must provide objects, shaders, and
+*   define color.  Public symbols for these are intended to be named TYPEn,
+*   where each set of mutually exclusive routines uses a different N.
+*
+*   This ray tracer library comes with TYPE1 routines.  These implement "normal"
+*   geometry and colors.  See the RAY_TYPE1 include file for details.
 }
 type
-{
-******************************
-*
-*   Dynamic ray descriptor.
-*
-*   The information about any one ray is broken into two data structures, the
-*   dynamic part (RAY_DESC_T) and the static part (RAY_CONTEXT_T).  The
-*   information that remains constant for all rays with a common ancestor goes
-*   into the static descriptor, and only that information that changes between
-*   rays of common ancestry goes into the dynamic ray descriptor.  A ray should
-*   always be referred to by its dynamic ray descriptor, since this points to
-*   the context information necessary to give meaning to the ray info.
-*
-*   The templates shown here only contain the mandatory part of the ray
-*   descriptors dictated by the kernel.  The real ray descriptors MUST start
-*   with this data, but the remainder is defined by convention between the
-*   object routines, the shader routines, and the calling routine to RAY_TRACE.
-}
-  ray_context_p_t =                    {pointer to ray context block}
-    ^ray_context_t;
+  ray_context_p_t = ^ray_context_t;    {pointer to static context for rays}
 
-  ray_desc_t = record                  {mandatory part of dynamic ray descriptor}
+  ray_object_p_t = ^ray_object_t;
+  ray_object_t = record                {one instance of an object}
+    routines_p: ^ray_object_routines_t; {pointer to static object information}
+    data_p: univ_ptr;                  {pointer to object-specific data for this instance}
+    end;
+
+  ray_desc_t = record                  {minimum required data for a ray}
     context_p: ray_context_p_t;        {pointer to static context info}
     end;
-{
-******************************
-*
-*   SHADER related data structures.
-}
-  ray_object_p_t =                     {pointer to an object}
-    ^ray_object_t;
-
-  ray_shader_parms_p_t =               {pointer to specific data for a shader}
-    ^ray_shader_parms_t;
 
   ray_hit_info_t = record              {data from object INTERSECT_CHECK routines}
     object_p: ray_object_p_t;          {points to object that the ray hit}
     distance: real;                    {ray distance to hit point}
-    shader_parms_p: ray_shader_parms_p_t; {pointer to parameters for the shader}
+    shader_parms_p: univ_ptr;          {pointer to parameters for the shader}
     enter: boolean;                    {TRUE if ray is entering object, not leaving}
     end;
 
-  ray_color_t =                        {template for application-specific color}
-    integer32;                         {kernel just deals with pointers to this}
+  ray_shader_t = ^procedure (          {resolve color given hit info}
+    in var  ray: univ ray_desc_t;      {the ray that hit the object}
+    in var  hit_info: ray_hit_info_t;  {saved info about the ray/object intersection}
+    out     color: univ sys_int_machine_t); {returned color, defined by TYPEn convention}
 
-ray_shader_t = ^procedure (            {resolve color given hit info}
-  in var  ray: univ ray_desc_t;        {unique info about this ray}
-  in var  hit_info: univ ray_hit_info_t; {unique info about this ray/object hit}
-  out     color: univ ray_color_t);    {each shader can have its own color format}
-
-  ray_shader_parms_t =                 {template for run time data for shader}
-    integer32;                         {kernel just deals with pointers to this}
-{
-******************************
-*
-*   Ray context information.  This data remains constant for any family of rays
-*   with a common ancestry.  It would remain constant for an entire image in a
-*   "normal" ray tracer.
-}
-  ray_object_parms_p_t =               {pointer to run-time object specific data}
-    ^ray_object_parms_t;
-
-  ray_context_t = record               {mandatory part of ray context information}
+  ray_context_t = record               {static context for each ray}
     top_level_obj_p: ray_object_p_t;   {pointer to top level "world" object}
-    object_parms_p: ray_object_parms_p_t; {world obj specific data parms pointer}
+    object_parms_p: univ_ptr;          {points to parameters for top level object}
     backg_shader: ray_shader_t;        {pointer to shader routine for background color}
     backg_hit_info: ray_hit_info_t;    {hit block for when ray hit nothing}
     end;
-{
-******************************
-*
-*   OBJECT related data structures.
-}
-  ray_crea_data_p_t = ^ray_crea_data_t;
-  ray_crea_data_t = sys_int_machine_t; {generic structure for create-time object data,
-                                        use specific xxx_CREA_DATA_T structures}
-
-  ray_object_parms_t =                 {run-time data for object INTERSECT_CHECK proc}
-    integer32;                         {kernel only deals with pointers to this}
 
   ray_geom_flag_values = (             {all separately requestable isect geom parms}
     ray_geom_point,                    {XYZ coordinates of intersection point}
     ray_geom_unorm                     {unit normal vector to surface}
     );
-  ray_geom_flags_t =                   {bit field of all RAY_GEOM_FLAG_VALUES}
+  ray_geom_flags_t =                   {set of all requestable intersect geometry values}
     set of ray_geom_flag_values;
 
-  ray_geom_info_t = record             {returned geometry information}
-    point: vect_3d_t;                  {X,Y,Z coordinate of intersection point}
-    unorm: vect_3d_t;                  {DX,DY,DZ unit normal vector of surface}
+  ray_geom_info_t = record             {returned intersection geometry information}
+    point: vect_3d_t;                  {coordinate of intersection point}
+    unorm: vect_3d_t;                  {unit normal vector of surface}
     flags: ray_geom_flags_t;           {flags for what really got returned}
-    unused1: boolean;
-    unused2: boolean;
-    end;
-
-  ray_object_t = record                {all the object-specific information}
-    routines_p: ^ray_object_routines_t; {pointer to generic class of routines}
-    data_p: univ_ptr;                  {pointer to object-specfic data}
     end;
 
   ray_object_version_t = record        {version and ID information about an object}
@@ -116,9 +66,6 @@ ray_shader_t = ^procedure (            {resolve color given hit info}
     version: integer32;                {arbitrary version ID}
     name: string_var80_t;              {up to 80 character object name}
     aggregate: boolean;                {true if object can hold other objects}
-    unused1: boolean;
-    unused2: boolean;
-    unused3: boolean;
     end;
 {
 *   Box descriptor and associated data structures.
@@ -148,42 +95,42 @@ ray_shader_t = ^procedure (            {resolve color given hit info}
 {
 *   All the entry points that are pointed to from the OBJECT_ROUTINES block.
 }
-ray_object_create_proc_t = ^procedure ( {create a new object}
-  in out  object: ray_object_t;        {object to be filled in}
-  in var  crea: univ ray_crea_data_t;  {specific build-time data for this object}
-  out     stat: sys_err_t);            {completion status code}
-  val_param;
+  ray_object_create_proc_t = ^procedure ( {create a new object}
+    in out  object: ray_object_t;      {object instance to be filled in}
+    in      gcrea_p: univ_ptr;         {data for creating this object instance}
+    out     stat: sys_err_t);          {completion status code}
+    val_param;
 
-ray_object_version_proc_t = ^procedure ( {return version info of this object}
-  out     version: ray_object_version_t);
-  val_param;
+  ray_object_version_proc_t = ^procedure ( {return version info of this object}
+    out     version: ray_object_version_t);
+    val_param;
 
-ray_object_isect_check_proc_t = ^function ( {check for ray hit this object}
-  in out  gray: univ ray_desc_t;       {input ray descriptor}
-  in var  object: ray_object_t;        {input object to intersect ray with}
-  in var  gparms: univ ray_object_parms_t; {run time obj-specific parameters}
-  out     hit_info: ray_hit_info_t;    {handle to routines and data to get hit color}
-  out     shader: ray_shader_t)        {pointer to shader to resolve color here}
-  :boolean;                            {TRUE if ray hit this object}
-  val_param;
+  ray_object_isect_check_proc_t = ^function ( {check for ray hit this object}
+    in out  gray: univ ray_desc_t;     {ray to intersect with object}
+    in var  object: ray_object_t;      {object to intersect ray with}
+    in      gparms_p: univ_ptr;        {pointer to run time TYPEn-specific params}
+    out     hit_info: ray_hit_info_t;  {returned intersection info}
+    out     shader: ray_shader_t)      {pointer to shader to resolve color here}
+    :boolean;                          {TRUE if ray hit this object}
+    val_param;
 
-ray_object_isect_geom_proc_t = ^procedure ( {get detailed intersect geometry}
-  in      hit_info: ray_hit_info_t;    {info about the intersection}
-  in      flags: ray_geom_flags_t;     {indicate what parameters are sought}
-  out     geom_info: ray_geom_info_t); {returned geometry info}
-  val_param;
+  ray_object_isect_geom_proc_t = ^procedure ( {get detailed intersect geometry}
+    in      hit_info: ray_hit_info_t;  {info about the intersection}
+    in      flags: ray_geom_flags_t;   {flags for the requested parameters}
+    out     geom_info: ray_geom_info_t); {returned geometry info}
+    val_param;
 
-ray_object_isect_box_proc_t = ^procedure ( {return object/box intersect status}
-  in      box: ray_box_t;              {descriptor for a paralellpiped volume}
-  in      object: ray_object_t;        {object to intersect with the box}
-  out     here: boolean;               {TRUE if ISECT_CHECK could be true in box}
-  out     enclosed: boolean);          {TRUE if solid obj and completely encloses box}
-  val_param;
+  ray_object_isect_box_proc_t = ^procedure ( {return object/box intersect status}
+    in      box: ray_box_t;            {descriptor for a paralellpiped volume}
+    in      object: ray_object_t;      {object to intersect with the box}
+    out     here: boolean;             {TRUE if ISECT_CHECK could be true in box}
+    out     enclosed: boolean);        {TRUE if solid obj and completely encloses box}
+    val_param;
 
-ray_object_add_child_proc_t = ^procedure ( {add child to an aggregate object}
-  in      aggr_obj: ray_object_t;      {aggregate object to add child to}
-  var     object: ray_object_t);       {child object to add to aggregate object}
-  val_param;
+  ray_object_add_child_proc_t = ^procedure ( {add child to an aggregate object}
+    in      aggr_obj: ray_object_t;    {aggregate object to add child to}
+    var     object: ray_object_t);     {child object to add to aggregate object}
+    val_param;
 {
 *   Object routines block.
 *
@@ -198,36 +145,13 @@ ray_object_add_child_proc_t = ^procedure ( {add child to an aggregate object}
     intersect_box: ray_object_isect_box_proc_t; {get box/object intersect status}
     add_child: ray_object_add_child_proc_t; {add child to aggregate object}
     end;
-{
-*   Define template for routine to create object routines block.  The address of
-*   these routines are probably found by looking into the symbol table at run
-*   time.  This routine(s) will fill in all the entry points existing for the
-*   particular object into the appropriate places in the POINTERS block.  Any
-*   extra entries in the POINTERS block will be set to the nil pointer to
-*   signify that the particular object does not perform that operation.
-}
+
   ray_object_routines_make_t = ^procedure ( {fill in pointers to obj entry points}
     out     pointers: ray_object_routines_t); {block to fill in}
     val_param;
 {
-******************************
-*
-*   RAY_TRACE (RAY, COLOR)
-*
-*   This is the main recursive entry point to the ray tracing kernel.  RAY_TRACE
-*   is given a ray, and resolves its color.  This subroutine may be called
-*   recursively by shaders that launch more rays as part of their job to
-*   determine ray color given an intersection point.  Note that the format of
-*   the returned color value is not dictated by the kernel.  RAY_TRACE really
-*   just gets it from the shaders and passes it along.  The format of COLOR is
-*   set by convention between the caller of RAY_TRACE and the shaders.
+*   Subroutines.
 }
-procedure ray_trace (
-  in out  ray: univ ray_desc_t;        {everything you need to know about one ray}
-  out     color: univ ray_color_t);    {returned color}
-  val_param; extern;
-
-
 procedure ray_close;                   {close use of ray tracer, release resources}
   val_param; extern;
 
@@ -238,4 +162,9 @@ procedure ray_init (                   {init ray tracer, must be first call}
 function ray_mem_alloc_perm (          {alloc un-releasable mem under ray tracer context}
   in      size: sys_int_adr_t)         {amount of memory to allocate}
   :univ_ptr;                           {pnt to new mem, bombs prog on no mem}
+  val_param; extern;
+
+procedure ray_trace (
+  in out  ray: univ ray_desc_t;        {the ray to trace}
+  out     color: univ sys_int_machine_t); {returned color, format defined by TYPEn}
   val_param; extern;

@@ -87,7 +87,7 @@ hit_loop:                              {back here after each new hit}
       ray2.base.context_p^.top_level_obj_p^.routines_p^.intersect_check^ ( {hit ?}
         ray2,                          {the ray descriptor}
         ray2.base.context_p^.top_level_obj_p^, {object to intersect ray with}
-        ray2.base.context_p^.object_parms_p^, {run time parameters for top level object}
+        ray2.base.context_p^.object_parms_p, {run time parameters for top level object}
         hit_info,                      {specific data returned about this hit}
         shader)                        {unused, we just want to know if it hit}
     then return;                       {RAY2.ENERGY is all set}
