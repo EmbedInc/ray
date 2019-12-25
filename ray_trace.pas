@@ -1,12 +1,14 @@
 {   Subroutine RAY_TRACE (RAY, COLOR)
 *
-*   This is the only pre-written "standard" routine of the ray tracer
-*   kernel.  RAY is the input ray descriptor in RAY_DESC_T.  It
-*   contains or points to all the necessary information to eventually
-*   resolve the ray's color.  COLOR is the returned ray's color.  It
-*   is internally declared as a 32 bit integer, but RAY_TRACE imposes
-*   no format on COLOR.  The caller's format for COLOR must agree with
-*   the assumptions made in the shaders.
+*   Trace a ray and resolve its "color".
+*
+*   The data type for the ray used here, RAY_DESC_T, is not intended to be used
+*   directly.  It is a template for holding only the minimum necessary
+*   information required at this level.  The TYPEn client routines define the
+*   details of the ray, as assumed by their objects and shaders.
+*
+*   COLOR is returned the final resolved color of the ray.  The format of color
+*   is set by the TYPEn client routines, and is unknown here.
 }
 module ray_trace;
 define ray_trace;
@@ -22,6 +24,10 @@ var
   shader: ray_shader_t;                {pointer to shader that resolves hit color}
 
 begin
+{
+*   Find whether the ray hits something.  If so, then HIT_INFO and SHADER are
+*   also returned.
+}
   if ray.context_p^.top_level_obj_p^.routines_p^.intersect_check^ ( {hit something ?}
       ray,                             {all the information about this ray}
       ray.context_p^.top_level_obj_p^, {object to intersect ray with}
@@ -33,7 +39,7 @@ begin
 *   to resolve the object's color at the intersect point.
 }
     then begin                         {yes, the ray hit something}
-      shader^ (                        {call object's shader to resolve color}
+      shader^ (                        {call the supplied shader to resolve the color}
         ray,                           {everything you need to know about the ray}
         hit_info,                      {specific info about this intersection}
         color);                        {retured color at intersect point}
@@ -43,9 +49,9 @@ begin
 *   by the static ray descriptor to get the background color.
 }
     else begin                         {the ray hit nothing at all}
-      ray.context_p^.backg_shader^ (   {call background shader}
-        ray,                           {same call args as normal shader}
-        ray.context_p^.backg_hit_info, {hit info block when nothing was hit}
+      ray.context_p^.backg_shader^ (   {call the default "background" shader}
+        ray,                           {the ray information}
+        ray.context_p^.backg_hit_info, {default hit info when ray hit nothing}
         color);                        {retured background color for this ray}
       end
     ;

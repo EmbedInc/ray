@@ -6,7 +6,6 @@ call build_vars
 
 call src_get %srcdir% %libname%.ins.pas
 call src_get %srcdir% %libname%2.ins.pas
-call src_get %srcdir% %libname%_kernel.ins.pas
 call src_get %srcdir% %libname%_type1.ins.pas
 call src_get %srcdir% %libname%_type1_2.ins.pas
 call src_get %srcdir% type1_octree.ins.pas
@@ -17,7 +16,6 @@ call src_getfrom sys sys.ins.pas
 call src_getfrom util util.ins.pas
 call src_getfrom string string.ins.pas
 call src_getfrom file file.ins.pas
-call src_getfrom imglib img.ins.pas
 call src_getfrom vect vect.ins.pas
 
 make_debug debug_switches.ins.pas

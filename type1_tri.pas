@@ -1,10 +1,17 @@
-{   All the routines to implement a triangle primitive.
+{   Ray tracer type 1 triangle object.
 }
 module type1_tri;
 define type1_tri_routines_make;
 %include 'ray_type1_2.ins.pas';
 
 type
+{
+*   TRI_DATA_T is the minimum mandatory private data stored for each triangle.
+*   This data structure is implicitly extended to include optional per-vertex
+*   data.  Which data is present is indicated by the FLAGS field.  When present,
+*   this data structure is extended to include VERT_OPT_RGB_T and
+*   VERT_OPT_SHNORM_T, at the end, in that order.
+}
   tri_data_p_t = ^tri_data_t;
   tri_data_t = record                  {mandatory fields of data for this object}
     flags: type1_tri_flags_t;          {indicates what optional vertex data exists
@@ -18,16 +25,26 @@ type
     zbx, zby: single;
     end;
 
+  rgba_t = record                      {RGB and/or alpha stored per vertex}
+    red: int8u_t;
+    grn: int8u_t;
+    blu: int8u_t;
+    alpha: int8u_t;
+    end;
+
   vert_opt_rgb_p_t = ^vert_opt_rgb_t;
   vert_opt_rgb_t = record              {optional RGB diffuse data per vertex}
-    v1, v2, v3: img_pixel1_t;
+    v1, v2, v3: rgba_t;
     end;
 
   vert_opt_shnorm_p_t = ^vert_opt_shnorm_t;
   vert_opt_shnorm_t = record           {optional shading normal vector per vertex}
     v1, v2, v3: vect_3d_t;
     end;
-
+{
+*   Hit information returned when a ray is found to intersect a triangle.  Other
+*   than the BASE field, this data is private to routines in this module.
+}
   tri_hit_geom_p_t = ^tri_hit_geom_t;
   tri_hit_geom_t = record              {saved data from intersection check}
     base: type1_hit_geom_t;            {mandatory part of hit geometry save area}

@@ -191,14 +191,14 @@ var
   uparms_p: type1_object_parms_p_t;    {pointer to object parameters in our format}
   r: real;                             {scratch floating point number}
   data_p: oct_data_p_t;                {pointer to object's specific data area}
-  p: vect3_t;                          {octree ray start point}
+  p: vect_3d_t;                        {octree ray start point}
   orayp: vect_3d_t;                    {ray point in octree 0,0,0 to 1,1,1 space}
-  v: vect3_t;                          {non-unit ray vector in 0 to 1 space}
-  vsq: vect3_t;                        {V with each component squared}
+  v: vect_3d_t;                        {non-unit ray vector in 0 to 1 space}
+  vsq: vect_3d_t;                      {V with each component squared}
   maj, min1, min2: sys_int_machine_t;  {1-3 subscripts for major and minor axies}
-  slope: vect3_t;                      {slope of each axis with respect to major axis}
+  slope: vect_3d_t;                    {slope of each axis with respect to major axis}
   dmaj: real;                          {major axis delta}
-  p1, p2: vect3_t;                     {scratch points}
+  p1, p2: vect_3d_t;                   {scratch points}
   level: sys_int_machine_t;            {nesting level of current node, top = 0}
   coor_mask: integer32;                {masks in relevant adr bits for this level}
   icoor: icoor_t;                      {32 bit integer XYZ coordinate}

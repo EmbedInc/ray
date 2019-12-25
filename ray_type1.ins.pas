@@ -110,15 +110,6 @@ type
     liparm_p: type1_liparm_p_t;        {pointer to lightsource block, may = NIL}
     visprop_p: type1_visprop_p_t;      {pointer to VISPROP block, may = NIL}
     end;
-
-  type1_readin_data_t = record         {stuff returned by READIN subroutine}
-    view: ray_view1_t;                 {viewing geometry definition block}
-    fnam: string_leafname_t;           {generic output file name to use, if any}
-    antialias: boolean;                {antialiasing turned on flag}
-    eof: boolean;                      {TRUE if READIN hit physical end of file}
-    unused1: boolean;
-    unused2: boolean;
-    end;
 {
 ******************************************
 *
@@ -232,7 +223,6 @@ var (ray_type1)
   hits: sys_int_machine_t;             {number of ray/object hits}
   total_time: sys_timer_t;             {total program run time}
   trace_time: sys_timer_t;             {total after starting to trace rays}
-  readin_time: sys_timer_t;            {time before tracing rays}
   start_octree_time: sys_timer_t;      {time to init ray entering octree}
   find_voxel_time: sys_timer_t;        {time to find voxel for given coordinate}
   subdiv_voxel_time: sys_timer_t;      {all time spent subdividing voxels}
@@ -290,10 +280,3 @@ procedure type1_shader_phong (         {shader using Phong lighting model}
   in var  hit_info: ray_hit_info_t;    {info about specific intersection}
   out     color: type1_color_t);       {returned ray color}
   extern;
-{
-*   Other entry points.
-}
-procedure type1_image_aliased (        {make and write aliased image}
-  in out  img_handle: img_conn_t;      {handle to previously opened image out file}
-  in      ray_context: ray_context_t); {static part of ray information}
-  val_param; extern;

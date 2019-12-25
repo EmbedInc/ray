@@ -1,5 +1,12 @@
 {   Internal data structures used by the OCTREE object, that must also be
 *   visible to the OCTREE_DATA object.
+*
+*   OCTREE is a aggregate object that works in the normal sense.  Tracing rays
+*   thru it yields intersections with the objects it contains.
+*
+*   The OCTREE_DATA object that shows the structure of an associated OCTREE
+*   object.  Tracing rays thru it yields intersections with the voxels of the
+*   OCTREE object to show the octree structure.
 }
 const
   obj_per_leaf_node = 5;               {number of object pointers in leaf node object}
@@ -7,15 +14,6 @@ const
   node_array_size = 30000;             {approximately 1 Mb worth of node descriptors}
 
 type
-  vect3_t = record case integer of     {3D vector with array overlay}
-    1:(                                {separate named fields}
-      x: real;
-      y: real;
-      z: real);
-    2:(                                {overlay array for arithmetic indexing}
-      coor: array[1..3] of real);
-    end;
-
   node_pp_t = ^node_p_t;
   node_p_t = ^node_t;
   node_t = record case integer of      {template for one octree node}
@@ -43,7 +41,7 @@ type
     array[1..node_array_size] of node_t;
 
   oct_data_p_t = ^oct_data_t;
-  oct_data_t = record                  {data record pointed to by object block}
+  oct_data_t = record                  {OCTREE object private data}
     shader: ray_shader_t;              {pointer to shader entry point}
     liparm_p: type1_liparm_p_t;        {pointer to light source parameters block}
     visprop_p: type1_visprop_p_t;      {pointer to visual properties block}

@@ -1,7 +1,8 @@
 {   Subroutine RAY_CLOSE
 *
-*   Close this use of the ray tracer library.  All resources will be deallocated.
-*   RAY_INIT must be called before the ray tracer library can be used again.
+*   Close this use of the ray tracer library.  All resources will be
+*   deallocated.  RAY_INIT must be called before the ray tracer library can be
+*   used again.
 }
 module ray_close;
 define ray_close;
