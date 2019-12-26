@@ -1,7 +1,12 @@
+{   WARNING:  This code is old, and some data structures have changed out from
+*   under it.  The source code is here to preserve it, but it is currently not
+*   being built.
+}
+
 {   All the routines to implement a dumb linear list aggregate object.
 }
 module type1_list;
-define type1_list_routines_make;
+define type1_list_class_make;
 %include 'ray_type1_2.ins.pas';
 
 type
@@ -60,65 +65,6 @@ procedure type1_list_add_child (       {Add child to this object}
 procedure type1_list_version (         {return version information about object}
   out     version: ray_object_version_t); {returned version information}
   val_param; forward;
-{
-****************************************************************************
-*
-*   Subroutine TYPE1_LIST_ROUTINES_MAKE (POINTERS, SIZE)
-*
-*   Fill in the routines block for this class of objects.  SIZE is the size in bytes
-*   of the data structure to be filled in.
-}
-procedure type1_list_routines_make (   {fill in object routines block}
-  out     pointers: ray_object_routines_t; {block to fill in}
-  in      size: sys_int_adr_t);        {number of bytes in POINTERS}
-  val_param;
-
-var
-  ents: sys_int_machine_t;             {number of routine entries in POINTERS}
-  i: sys_int_machine_t;                {loop counter}
-  max_ofs: sys_int_machine_t;          {byte offset of last entry in POINTERS}
-  p: ^ray_object_create_proc_t;        {pointer to a subroutine entry point}
-
-begin
-  ents := size div sizeof(p^);         {number of pointers in block}
-  p := univ_ptr(addr(pointers));       {init pointer to first entry in POINTERS}
-  for i := 1 to ents do begin          {once for each slot in POINTERS}
-    p^ := nil;                         {init this slot in POINTERS to the nil pointer}
-    p := univ_ptr(integer32(p)+sizeof(p^)); {point to next slot in POINTERS}
-    end;
-  max_ofs := (ents - 1)*4;             {byte offset of last entry}
-
-  if (integer32(addr(pointers.version))-integer32(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.version :=
-      ray_object_version_proc_t(addr(type1_list_version));
-    ;
-  if (integer32(addr(pointers.create))-integer32(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.create :=
-      ray_object_create_proc_t(addr(type1_list_create));
-    ;
-  if (integer32(addr(pointers.intersect_check))-integer32(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.intersect_check :=
-      ray_object_isect_check_proc_t(addr(type1_list_intersect_check));
-    ;
-  if (integer32(addr(pointers.intersect_geom))-integer32(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.intersect_geom :=
-      ray_object_isect_geom_proc_t(addr(type1_list_intersect_geom));
-    ;
-  if (integer32(addr(pointers.intersect_box))-integer32(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.intersect_box :=
-      ray_object_isect_box_proc_t(addr(type1_list_intersect_box));
-    ;
-  if (integer32(addr(pointers.add_child))-integer32(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.add_child :=
-      ray_object_add_child_proc_t(addr(type1_list_add_child));
-    ;
-  end;
 {
 ****************************************************************************
 *
@@ -319,4 +265,22 @@ begin
   obj_p^.list_p := data_p^.list_p;     {make new entry point to rest of list}
   data_p^.list_p := obj_p;             {set start of list pointer to new entry}
   data_p^.n_obj := data_p^.n_obj;      {count one more object in list}
+  end;
+{
+********************************************************************************
+*
+*   Subroutine TYPE1_LIST_CLASS_MAKE (CLASS)
+*
+*   Fill in the routines block for this class of objects.
+}
+procedure type1_list_class_make (      {fill in object class descriptor}
+  out     class: ray_object_class_t);  {block to fill in}
+  val_param;
+
+begin
+  class.create := addr(type1_list_create);
+  class.intersect_check := addr(type1_list_intersect_check);
+  class.hit_geom := addr(type1_list_intersect_geom);
+  class.intersect_box := addr(type1_list_intersect_box);
+  class.add_child := addr(type1_list_add_child);
   end;

@@ -6,7 +6,7 @@
 {   Type 1 3DFIELD primitive object.
 }
 module type1_3dfield;
-define type1_3dfield_routines_make;
+define type1_3dfield_class_make;
 %include 'ray_type1_2.ins.pas';
 
 const
@@ -210,60 +210,6 @@ procedure type1_3dfield_intersect_box ( {find object/box intersection status}
 procedure type1_3dfield_version (      {return version information about object}
   out     version: ray_object_version_t); {returned version information}
   forward;
-{
-****************************************************************************
-*
-*   Subroutine TYPE1_3DFIELD_ROUTINES_MAKE (POINTERS, SIZE)
-*
-*   Fill in the routines block for this class of objects.  SIZE is the size in bytes
-*   of the data structure to be filled in.
-}
-procedure type1_3dfield_routines_make ( {fill in object routines block}
-  out     pointers: ray_object_routines_t; {block to fill in}
-  in      size: sys_int_adr_t);        {number of bytes in POINTERS}
-  val_param;
-
-var
-  ents: integer32;                     {number of routine entries in POINTERS}
-  i: integer32;                        {loop counter}
-  max_ofs: integer32;                  {byte offset of last entry in POINTERS}
-  p: ^ray_object_create_proc_t;        {pointer to a subroutine entry point}
-
-begin
-  ents := size div sizeof(p^);         {number of pointers in block}
-  p := univ_ptr(addr(pointers));       {init pointer to first entry in POINTERS}
-  for i := 1 to ents do begin          {once for each slot in POINTERS}
-    p^ := nil;                         {init this slot in POINTERS to the nil pointer}
-    p := univ_ptr(integer32(p)+sizeof(p^)); {point to next slot in POINTERS}
-    end;
-  max_ofs := (ents - 1)*4;             {byte offset of last entry}
-
-  if (integer32(addr(pointers.version))-integer32(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.version :=
-      ray_object_version_proc_t(addr(type1_3dfield_version));
-    ;
-  if (integer32(addr(pointers.create))-integer32(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.create :=
-      ray_object_create_proc_t(addr(type1_3dfield_create));
-    ;
-  if (integer32(addr(pointers.intersect_check))-integer32(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.intersect_check :=
-      ray_object_isect_check_proc_t(addr(type1_3dfield_intersect_check));
-    ;
-  if (integer32(addr(pointers.intersect_geom))-integer32(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.intersect_geom :=
-      ray_object_isect_geom_proc_t(addr(type1_3dfield_intersect_geom));
-    ;
-  if (integer32(addr(pointers.intersect_box))-integer32(addr(pointers)))
-    <= max_ofs                         {this slot within POINTERS ?}
-    then pointers.intersect_box :=
-      ray_object_isect_box_proc_t(addr(type1_3dfield_intersect_box));
-    ;
-  end;
 {
 ****************************************************************************
 *
@@ -1691,4 +1637,22 @@ procedure type1_3dfield_intersect_box ( {find object/box intersection status}
 begin
   here := true;
   enclosed := false;
+  end;
+{
+********************************************************************************
+*
+*   Subroutine TYPE1_3DFIELD_CLASS_MAKE (CLASS)
+*
+*   Fill in the routines block for this class of objects.
+}
+procedure type1_3dfield_class_make (   {fill in object class descriptor}
+  out     class: ray_object_class_t);  {block to fill in}
+  val_param;
+
+begin
+  class.create := addr(type1_3dfield_create);
+  class.intersect_check := addr(type1_3dfield_intersect_check);
+  class.hit_geom := addr(type1_3dfield_intersect_geom);
+  class.intersect_box := addr(type1_3dfield_intersect_box);
+  class.add_child := nil;
   end;

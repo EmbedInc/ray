@@ -124,7 +124,7 @@ type
 *   other information about the object can be found by examining data in this
 *   structure.
 *
-*   For now the RAY_OBJECT_ROUTINES_MAKE_T entry point needs to be called to
+*   For now the RAY_OBJECT_CLASS_MAKE_T entry point needs to be called to
 *   fill in a RAY_OBJECT_CLASS_T structure.  Eventually those should be
 *   statically defined and declared external in the TYPEn include file.
 }

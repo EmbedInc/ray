@@ -176,7 +176,7 @@ type
         v: array[1..3] of type1_tri_opt_vert_t);
     end;
 
-procedure type1_tri_routines_make (    {fill in object routines block}
+procedure type1_tri_class_make (       {fill in object class descriptor}
   out     class: ray_object_class_t);  {block to fill in}
   val_param; extern;
 {
@@ -192,7 +192,7 @@ type
     radius: real;                      {radius of sphere}
     end;
 
-procedure type1_sphere_routines_make ( {fill in object routines block}
+procedure type1_sphere_class_make (    {fill in object class descriptor}
   out     class: ray_object_class_t);  {block to fill in}
   val_param; extern;
 {
@@ -223,7 +223,7 @@ type
       array[1..type1_3dfield_max_iso_vals_k] of type1_3dfield_iso_t;
     end;
 
-procedure type1_3dfield_routines_make ( {fill in object routines block}
+procedure type1_3dfield_class_make (   {fill in object class descriptor}
   out     class: ray_object_class_t);  {block to fill in}
   val_param; extern;
 {
@@ -249,7 +249,7 @@ type
     size: vect_3d_t;                   {outer octree dimension for each axis}
     end;
 
-procedure type1_octree_routines_make ( {fill in object routines block}
+procedure type1_octree_class_make (    {fill in object class descriptor}
   out     class: ray_object_class_t);  {block to fill in}
   val_param; extern;
 
@@ -281,7 +281,7 @@ type
     unused3: boolean;
     end;
 
-procedure type1_octree_data_routines_make ( {fill in object routines block}
+procedure type1_octree_data_class_make ( {fill in object class descriptor}
   out     class: ray_object_class_t);  {block to fill in}
   val_param; extern;
 {
@@ -303,6 +303,6 @@ type
     visprop_p: type1_visprop_p_t;      {pointer to visprop block, may be NIL}
     end;
 
-procedure type1_list_routines_make (   {fill in object routines block}
+procedure type1_list_class_make (      {fill in object class descriptor}
   out     class: ray_object_class_t);  {block to fill in}
   val_param; extern;

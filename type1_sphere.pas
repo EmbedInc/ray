@@ -1,7 +1,7 @@
 {   All the routines to implement a dumb sphere object.
 }
 module type1_sphere;
-define type1_sphere_routines_make;
+define type1_sphere_class_make;
 %include 'ray_type1_2.ins.pas';
 
 type
@@ -505,25 +505,11 @@ all_outside:
 {
 ********************************************************************************
 *
-*   Local subroutine TYPE1_SPHERE_ADD_CHILD (AGGR_OBJ, OBJECT)
-}
-procedure type1_sphere_add_child (     {Add child to aggregate object (illegal)}
-  in      aggr_obj: ray_object_t;      {aggregate object to add child to}
-  var     object: ray_object_t);       {child object to add to aggregate object}
-  val_param;
-
-begin
-  writeln ('TYPE1_SPHERE is not an aggregate object and does not support ADD_CHILD.');
-  sys_bomb;
-  end;
-{
-********************************************************************************
-*
-*   Subroutine TYPE1_TRI_ROUTINES_MAKE (CLASS)
+*   Subroutine TYPE1_SPHERE_CLASS_MAKE (CLASS)
 *
 *   Fill in the routines block for this class of objects.
 }
-procedure type1_sphere_routines_make ( {fill in object routines block}
+procedure type1_sphere_class_make (    {fill in object class descriptor}
   out     class: ray_object_class_t);  {block to fill in}
   val_param;
 
@@ -532,5 +518,5 @@ begin
   class.intersect_check := addr(type1_sphere_intersect_check);
   class.hit_geom := addr(type1_sphere_intersect_geom);
   class.intersect_box := addr(type1_sphere_intersect_box);
-  class.add_child := addr(type1_sphere_add_child);
+  class.add_child := nil;
   end;

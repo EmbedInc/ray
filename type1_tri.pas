@@ -1,7 +1,7 @@
 {   Ray tracer type 1 triangle object.
 }
 module type1_tri;
-define type1_tri_routines_make;
+define type1_tri_class_make;
 %include 'ray_type1_2.ins.pas';
 
 type
@@ -845,17 +845,6 @@ in_box:                                {jump here if some part of tri is inside 
 {
 ********************************************************************************
 }
-procedure type1_tri_add_child (        {Add child to this object (illegal)}
-  in      aggr_obj: ray_object_t;      {aggregate object to add child to}
-  var     object: ray_object_t);       {child object to add to aggregate object}
-  val_param;
-
-begin
-  sys_message_bomb ('ray_type1', 'tri_not_aggregate', nil, 0);
-  end;
-{
-********************************************************************************
-}
 procedure type1_stats_init;
   val_param;
 
@@ -899,11 +888,11 @@ begin
 {
 ********************************************************************************
 *
-*   Subroutine TYPE1_TRI_ROUTINES_MAKE (CLASS)
+*   Subroutine TYPE1_TRI_CLASS_MAKE (CLASS)
 *
 *   Fill in the routines block for this class of objects.
 }
-procedure type1_tri_routines_make (    {fill in object routines block}
+procedure type1_tri_class_make (       {fill in object class descriptor}
   out     class: ray_object_class_t);  {block to fill in}
   val_param;
 
@@ -912,5 +901,5 @@ begin
   class.intersect_check := addr(type1_tri_intersect_check);
   class.hit_geom := addr(type1_tri_intersect_geom);
   class.intersect_box := addr(type1_tri_intersect_box);
-  class.add_child := addr(type1_tri_add_child);
+  class.add_child := nil;
   end;

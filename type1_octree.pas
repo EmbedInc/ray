@@ -1,7 +1,7 @@
 {   Type 1 OCTREE aggregate object.  The octree is rectangular and axis aligned.
 }
 module type1_octree;
-define type1_octree_routines_make;
+define type1_octree_class_make;
 define type1_octree_geom;
 %include 'ray_type1_2.ins.pas';
 %include 'type1_octree.ins.pas';
@@ -946,11 +946,11 @@ begin
 {
 ********************************************************************************
 *
-*   Subroutine TYPE1_TRI_ROUTINES_MAKE (CLASS)
+*   Subroutine TYPE1_OCTREE_CLASS_MAKE (CLASS)
 *
 *   Fill in the routines block for this class of objects.
 }
-procedure type1_octree_routines_make ( {fill in object routines block}
+procedure type1_octree_class_make (    {fill in object class descriptor}
   out     class: ray_object_class_t);  {block to fill in}
   val_param;
 

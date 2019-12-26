@@ -9,7 +9,7 @@
 *   The octree must be a previously created TYPE1_OCTREE object.
 }
 module type1_octree_data;
-define type1_octree_data_routines_make;
+define type1_octree_data_class_make;
 %include 'ray_type1_2.ins.pas';
 %include 'type1_octree.ins.pas';
 
@@ -775,11 +775,11 @@ begin
 {
 ********************************************************************************
 *
-*   Subroutine TYPE1_OCTREE_DATA_ROUTINES_MAKE (POINTERS, SIZE)
+*   Subroutine TYPE1_OCTREE_DATA_CLASS_MAKE (POINTERS, SIZE)
 *
 *   Fill in the routines block for this class of objects.
 }
-procedure type1_octree_data_routines_make ( {fill in object routines block}
+procedure type1_octree_data_class_make ( {fill in object class descriptor}
   out     pointers: ray_object_routines_t); {block to fill in}
   val_param;
 
