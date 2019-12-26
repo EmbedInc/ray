@@ -1,5 +1,11 @@
-{   Include file to define externally visible data structures for TYPE 1 objects
-*   and shaders.
+{   Public include file for the type 1 implementation of the ray tracer.
+*
+*   The base ray tracer does not define any tracable objects, shaders, or the
+*   format of color values.  This is done by specific implementations, intended
+*   to be named TYPEn.  See the RAY.INS.PAS file for details.
+*
+*   This type 1 implementation is intended to be reasonably "normal".  It is
+*   included with the overall ray tracer package.
 }
 const
   type1_max_light_sources_k = 8;       {max number of simultaneous light sources}
@@ -8,19 +14,16 @@ const
   type1_3dfield_max_iso_vals_k = 8;    {max number of allowed iso-values in 3DFIELD}
 
 type
-{
-*   Mnemonic names for the various types of light sources.
-}
-  type1_ltype_k_t = (                  {ID for each type of light source}
-    type1_ltype_off_k,                 {this light source turned off}
-    type1_ltype_ambient_k,             {ambient light, same from all directions}
-    type1_ltype_directional_k,         {directional (point at infinity)}
-    type1_ltype_point_constant_k,      {point light source, no fall off}
-    type1_ltype_point_r2_k);           {point light source, 1/r**2 falloff}
+  type1_color_t = record               {one color}
+    red: real;                         {0.0 to 1.0 color components}
+    grn: real;
+    blu: real;
+    alpha: real;                       {0.0 to 1.0 opacity fraction}
+    end;
 
   type1_ray_p_t = ^type1_ray_t;
-  type1_ray_t = record                 {ray descriptor}
-    base: ray_desc_t;                  {mandatory ray descriptor entry}
+  type1_ray_t = record                 {data for one ray}
+    base: ray_desc_t;                  {mandatory ray data}
     point: vect_3d_t;                  {ray origin}
     vect: vect_3d_t;                   {DX, DY, DZ unit ray vector}
     generation: sys_int_machine_t;     {generation counter (eye ray = 1)}
@@ -29,32 +32,12 @@ type
     max_dist: real;                    {maximum distance to valid intersection}
     end;
 
-  type1_color_t = record               {template for describing color value}
-    red: real;                         {0.0 to 1.0 color values}
-    grn: real;
-    blu: real;
-    alpha: real;                       {0.0 to 1.0 opacity fraction}
-    end;
-
-  type1_visprop_p_t = ^type1_visprop_t;
-  type1_visprop_t = record             {visual properties description block}
-    back_p: type1_visprop_p_t;         {visual properties of back side, may be NIL}
-    emis_red: real;                    {emissive color}
-    emis_grn: real;
-    emis_blu: real;
-    diff_red: real;                    {diffuse color}
-    diff_grn: real;
-    diff_blu: real;
-    spec_red: real;                    {specular color}
-    spec_grn: real;
-    spec_blu: real;
-    spec_exp: sys_int_machine_t;       {specular exponent}
-    opac_front: real;                  {opacity when facing head on}
-    opac_side: real;                   {opacity when at limb curve}
-    diff_on: boolean;                  {diffuse reflections on/off flag}
-    spec_on: boolean;                  {specular reflections on/off flag}
-    opac_on: boolean;                  {transparency on/off flag}
-    end;
+  type1_ltype_k_t = (                  {ID for each type of light source}
+    type1_ltype_off_k,                 {this light source turned off}
+    type1_ltype_ambient_k,             {ambient light, same from all directions}
+    type1_ltype_directional_k,         {directional (point at infinity)}
+    type1_ltype_point_constant_k,      {point light source, no fall off}
+    type1_ltype_point_r2_k);           {point light source, 1/r**2 falloff}
 
   type1_light_t = record               {template for one light source}
     ltype: type1_ltype_k_t;            {light source type, use TYPE1_LTYPE_xxx_K}
@@ -93,6 +76,26 @@ type
       array[1..type1_max_light_sources_k] of type1_light_t;
     end;
 
+  type1_visprop_p_t = ^type1_visprop_t;
+  type1_visprop_t = record             {visual properties description block}
+    back_p: type1_visprop_p_t;         {visual properties of back side, may be NIL}
+    emis_red: real;                    {emissive color}
+    emis_grn: real;
+    emis_blu: real;
+    diff_red: real;                    {diffuse color}
+    diff_grn: real;
+    diff_blu: real;
+    spec_red: real;                    {specular color}
+    spec_grn: real;
+    spec_blu: real;
+    spec_exp: sys_int_machine_t;       {specular exponent}
+    opac_front: real;                  {opacity when facing head on}
+    opac_side: real;                   {opacity when at limb curve}
+    diff_on: boolean;                  {diffuse reflections on/off flag}
+    spec_on: boolean;                  {specular reflections on/off flag}
+    opac_on: boolean;                  {transparency on/off flag}
+    end;
+
   type1_hit_geom_p_t = ^type1_hit_geom_t;
   type1_hit_geom_t = record            {TYPE1 minimum hit geometry save block}
     liparm_p: type1_liparm_p_t;        {pointer to light source parameters block}
@@ -105,11 +108,60 @@ type
     liparm_p: type1_liparm_p_t;        {pointer to lightsource block, may = NIL}
     visprop_p: type1_visprop_p_t;      {pointer to VISPROP block, may = NIL}
     end;
+
+var (ray_type1)                        {static data for keeping statistics}
+  checks: sys_int_machine_t;           {number of ray/object intersect checks}
+  hits: sys_int_machine_t;             {number of ray/object hits}
+  total_time: sys_timer_t;             {total program run time}
+  trace_time: sys_timer_t;             {total after starting to trace rays}
+  start_octree_time: sys_timer_t;      {time to init ray entering octree}
+  find_voxel_time: sys_timer_t;        {time to find voxel for given coordinate}
+  subdiv_voxel_time: sys_timer_t;      {all time spent subdividing voxels}
+  trace_voxel_time: sys_timer_t;       {time to check all objects in a voxel}
+  next_coor_time: sys_timer_t;         {time to find coordinate in next voxel}
+  shader_time: sys_timer_t;            {time spent doing shader calculations}
+  sphere_isect_time: sys_timer_t;      {time spent doing sphere intersect checks}
 {
-******************************************
+********************************************************************************
 *
-*   Data types used by specific objects that need to be externally known.
+*   Shaders.  These routines resolve the color apparent along a ray, given the
+*   specifics of a ray/object intersection.
 }
+type
+  type1_shader_fixed_data_p_t = ^type1_shader_fixed_data_t;
+  type1_shader_fixed_data_t = record   {SHADER PARMS for fixed backg shader}
+    col: type1_color_t;                {the fixed color to return}
+    liparm_p: type1_liparm_p_t;        {pointer to light source descriptors}
+    end;
+
+procedure type1_shader_fixed (         {always returns fixed color, used for backg}
+  in var  ray: type1_ray_t;            {handle to the ray}
+  in var  hit_info: ray_hit_info_t;    {info about specific intersection}
+  out     color: type1_color_t);       {returned ray color}
+  extern;
+
+procedure type1_shader_phong (         {shader using Phong lighting model}
+  in var  ray: type1_ray_t;            {handle to the ray}
+  in var  hit_info: ray_hit_info_t;    {info about specific intersection}
+  out     color: type1_color_t);       {returned ray color}
+  extern;
+{
+********************************************************************************
+*
+*   Objects.  There are two basic types of objects, aggregate and direct.
+*
+*   Aggregate objects hold other objects.  Intersecting a ray with a aggregate
+*   object causes the ray to be intersected against the contained objects
+*   instead.
+*
+*   Direct objects are the actual geometric entities that are directly visible.
+}
+{
+********************
+*
+*   Triangle.
+}
+type
   type1_tri_flags_k_t = (              {per-triangle separate flags}
     type1_tri_flag_rgb_k,              {explicit diffuse RGB for each vertex}
     type1_tri_flag_alpha_k,            {explicit alpha for each vertex}
@@ -137,6 +189,15 @@ type
         v: array[1..3] of type1_tri_opt_vert_t);
     end;
 
+procedure type1_tri_routines_make (    {fill in object routines block}
+  out     class: ray_object_class_t);  {block to fill in}
+  val_param; extern;
+{
+********************
+*
+*   Sphere.
+}
+type
   type1_sphere_crea_data_p_t = ^type1_sphere_crea_data_t;
   type1_sphere_crea_data_t = record    {creation data for SPHERE object}
     visprop_p: type1_visprop_p_t;      {pointer to visprop block, may be NIL}
@@ -144,6 +205,17 @@ type
     radius: real;                      {radius of sphere}
     end;
 
+procedure type1_sphere_routines_make ( {fill in object routines block}
+  out     class: ray_object_class_t);  {block to fill in}
+  val_param; extern;
+{
+********************
+*
+*   3D scaler field.
+*
+*   The visible objects are iso-surfaces implied by the scaler field.
+}
+type
   type1_3dfield_iso_t = record         {description for one iso-surface}
     val: real;                         {data iso-value}
     visprop_p: type1_visprop_p_t;      {may be NIL to indicate inherited}
@@ -164,13 +236,20 @@ type
       array[1..type1_3dfield_max_iso_vals_k] of type1_3dfield_iso_t;
     end;
 
-  type1_list_crea_data_p_t = ^type1_list_crea_data_t;
-  type1_list_crea_data_t = record      {creation data for LIST object}
-    shader: ray_shader_t;              {shader entry pointer, may be NIL}
-    liparm_p: type1_liparm_p_t;        {pointer to light source block, may be NIL}
-    visprop_p: type1_visprop_p_t;      {pointer to visprop block, may be NIL}
-    end;
-
+procedure type1_3dfield_routines_make ( {fill in object routines block}
+  out     class: ray_object_class_t);  {block to fill in}
+  val_param; extern;
+{
+********************
+*
+*   Octree aggregate object.
+*
+*   This object adaptively subdivides the outer bounding box recursively into 8
+*   equal sub-boxes to minimize the objects in each final box.  Ray are quickly
+*   traced thru empty voxels.  Non-empty voxels should have been divided enough
+*   so that each contain few objects to check for intersection with the ray.
+}
+type
   type1_octree_crea_data_p_t = ^type1_octree_crea_data_t;
   type1_octree_crea_data_t = record    {creation data for OCTREE object}
     shader: ray_shader_t;              {shader entry pointer, may be NIL}
@@ -183,6 +262,25 @@ type
     size: vect_3d_t;                   {outer octree dimension for each axis}
     end;
 
+procedure type1_octree_routines_make ( {fill in object routines block}
+  out     class: ray_object_class_t);  {block to fill in}
+  val_param; extern;
+
+procedure type1_octree_geom (          {back door to stomp on octree geometry}
+  in      origin: vect_3d_t;           {most negative corner for all 3 axies}
+  in      size: vect_3d_t;             {outer octree dimension for each axis}
+  in      object: ray_object_t);       {handle to specific octree object}
+  val_param; extern;
+{
+********************
+*
+*   Octree data object.
+*
+*   This object shows the voxel structure of a octree object (above), as apposed
+*   to the objects within the octree.  This can be useful to show or check how
+*   the octree recursive subdivision worked.
+}
+type
   type1_octree_data_crea_data_p_t = ^type1_octree_data_crea_data_t;
   type1_octree_data_crea_data_t = record {creation data for OCTREE DATA object}
     shader: ray_shader_t;              {shader entry pointer, may be NIL}
@@ -195,84 +293,29 @@ type
     unused2: boolean;
     unused3: boolean;
     end;
-{
-******************************************
-*
-*   Data types used by specific shaders that need to be externally known.
-}
-  type1_shader_fixed_data_t = record   {SHADER PARMS for fixed backg shader}
-    col: type1_color_t;                {the fixed color to return}
-    liparm_p: type1_liparm_p_t;        {pointer to light source descriptors}
-    end;
-
-  type1_shader_fixed_data_p_t =
-    ^type1_shader_fixed_data_t;
-{
-******************************************
-*
-*   Common block for keeping statistics.
-}
-var (ray_type1)
-  checks: sys_int_machine_t;           {number of ray/object intersect checks}
-  hits: sys_int_machine_t;             {number of ray/object hits}
-  total_time: sys_timer_t;             {total program run time}
-  trace_time: sys_timer_t;             {total after starting to trace rays}
-  start_octree_time: sys_timer_t;      {time to init ray entering octree}
-  find_voxel_time: sys_timer_t;        {time to find voxel for given coordinate}
-  subdiv_voxel_time: sys_timer_t;      {all time spent subdividing voxels}
-  trace_voxel_time: sys_timer_t;       {time to check all objects in a voxel}
-  next_coor_time: sys_timer_t;         {time to find coordinate in next voxel}
-  shader_time: sys_timer_t;            {time spent doing shader calculations}
-  sphere_isect_time: sys_timer_t;      {time spent doing sphere intersect checks}
-{
-******************************************
-*
-*   Public entry points.
-*
-*   Entry points for filling in object class static data.
-}
-procedure type1_3dfield_routines_make ( {fill in object routines block}
-  out     class: ray_object_class_t);  {block to fill in}
-  val_param; extern;
-
-procedure type1_list_routines_make (   {fill in object routines block}
-  out     class: ray_object_class_t);  {block to fill in}
-  val_param; extern;
-
-procedure type1_octree_routines_make ( {fill in object routines block}
-  out     class: ray_object_class_t);  {block to fill in}
-  val_param; extern;
 
 procedure type1_octree_data_routines_make ( {fill in object routines block}
   out     class: ray_object_class_t);  {block to fill in}
   val_param; extern;
+{
+********************
+*
+*   List aggregate object.
+*
+*   All the sub-objects are simply stored in a list, and rays are checked for
+*   intersection by scanning thru the whole list.  This object is not intended
+*   for making final ray-traced images.  It can be useful for research purposes,
+*   as a comparison against various speedup techniques.  The code also serves as
+*   a template for a minimal aggregate object.
+}
+type
+  type1_list_crea_data_p_t = ^type1_list_crea_data_t;
+  type1_list_crea_data_t = record      {creation data for LIST object}
+    shader: ray_shader_t;              {shader entry pointer, may be NIL}
+    liparm_p: type1_liparm_p_t;        {pointer to light source block, may be NIL}
+    visprop_p: type1_visprop_p_t;      {pointer to visprop block, may be NIL}
+    end;
 
-procedure type1_sphere_routines_make ( {fill in object routines block}
+procedure type1_list_routines_make (   {fill in object routines block}
   out     class: ray_object_class_t);  {block to fill in}
   val_param; extern;
-
-procedure type1_tri_routines_make (    {fill in object routines block}
-  out     class: ray_object_class_t);  {block to fill in}
-  val_param; extern;
-{
-*   Other object entry points.
-}
-procedure type1_octree_geom (          {back door to stomp on octree geometry}
-  in      origin: vect_3d_t;           {most negative corner for all 3 axies}
-  in      size: vect_3d_t;             {outer octree dimension for each axis}
-  in      object: ray_object_t);       {handle to specific octree object}
-  val_param; extern;
-{
-*   Entry points for shaders.
-}
-procedure type1_shader_fixed (         {always returns fixed color, used for backg}
-  in var  ray: type1_ray_t;            {handle to the ray}
-  in var  hit_info: ray_hit_info_t;    {info about specific intersection}
-  out     color: type1_color_t);       {returned ray color}
-  extern;
-
-procedure type1_shader_phong (         {shader using Phong lighting model}
-  in var  ray: type1_ray_t;            {handle to the ray}
-  in var  hit_info: ray_hit_info_t;    {info about specific intersection}
-  out     color: type1_color_t);       {returned ray color}
-  extern;
