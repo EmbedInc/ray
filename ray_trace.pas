@@ -28,7 +28,7 @@ begin
 *   Find whether the ray hits something.  If so, then HIT_INFO and SHADER are
 *   also returned.
 }
-  if ray.context_p^.top_level_obj_p^.routines_p^.intersect_check^ ( {hit something ?}
+  if ray.context_p^.top_level_obj_p^.class_p^.intersect_check^ ( {hit something ?}
       ray,                             {all the information about this ray}
       ray.context_p^.top_level_obj_p^, {object to intersect ray with}
       ray.context_p^.object_parms_p,   {parameters for top level object}

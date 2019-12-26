@@ -56,28 +56,6 @@ type
 {
 ********************************************************************************
 *
-*   Local subroutine TYPE1_TRI_VERSION (VERSION)
-*
-*   Return version information about this object class.
-}
-procedure type1_tri_version (          {return version information about object}
-  out     version: ray_object_version_t); {returned version information}
-  val_param;
-
-begin
-  version.year := 1991;
-  version.month := 5;
-  version.day := 1;
-  version.hour := 9;
-  version.minute := 0;
-  version.second := 0;
-  version.version := 0;
-  version.name := string_v('TRI');
-  version.aggregate := false;
-  end;
-{
-********************************************************************************
-*
 *   Local subroutine TYPE1_TRI_CREATE (OBJECT, CREA, STAT)
 *
 *   Create a new instance of the TRI (triangle) object.
@@ -921,19 +899,18 @@ begin
 {
 ********************************************************************************
 *
-*   Subroutine TYPE1_TRI_ROUTINES_MAKE (POINTERS)
+*   Subroutine TYPE1_TRI_ROUTINES_MAKE (CLASS)
 *
 *   Fill in the routines block for this class of objects.
 }
 procedure type1_tri_routines_make (    {fill in object routines block}
-  out     pointers: ray_object_routines_t); {block to fill in}
+  out     class: ray_object_class_t);  {block to fill in}
   val_param;
 
 begin
-  pointers.create := addr(type1_tri_create);
-  pointers.version := addr(type1_tri_version);
-  pointers.intersect_check := addr(type1_tri_intersect_check);
-  pointers.intersect_geom := addr(type1_tri_intersect_geom);
-  pointers.intersect_box := addr(type1_tri_intersect_box);
-  pointers.add_child := addr(type1_tri_add_child);
+  class.create := addr(type1_tri_create);
+  class.intersect_check := addr(type1_tri_intersect_check);
+  class.hit_geom := addr(type1_tri_intersect_geom);
+  class.intersect_box := addr(type1_tri_intersect_box);
+  class.add_child := addr(type1_tri_add_child);
   end;

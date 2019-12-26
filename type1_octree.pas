@@ -55,28 +55,6 @@ var
 {
 ********************************************************************************
 *
-*   Local subroutine TYPE1_OCTREE_VERSION (VERSION)
-*
-*   Return version information obout this class of objects.
-}
-procedure type1_octree_version (       {return version information about object}
-  out     version: ray_object_version_t); {returned version information}
-  val_param;
-
-begin
-  version.year := 1991;
-  version.month := 5;
-  version.day := 3;
-  version.hour := 10;
-  version.minute := 0;
-  version.second := 0;
-  version.version := 0;
-  version.name := string_v('OCTREE');
-  version.aggregate := true;
-  end;
-{
-********************************************************************************
-*
 *   Local subroutine TYPE1_OCTREE_CREATE (OBJECT, CREA, STAT)
 *
 *   Fill in the new object in OBJECT.  CREA is the user data parameters for
@@ -651,7 +629,7 @@ subdivide_voxel:
         obj_pp := addr(vlnp^.ch_p[1]); {get address of first object pointer this node}
         nleft := obj_per_data_node;    {reset number of object pointers available}
         end;                           {done switching to next data node}
-      obj_pp^^.routines_p^.intersect_box^ ( {check object intersect with this voxel}
+      obj_pp^^.class_p^.intersect_box^ ( {check object intersect with this voxel}
         box,                           {box descriptor for this voxel}
         obj_pp^^,                      {object to intersect box with}
         here,                          {true if ray can bump into object here}
@@ -736,7 +714,7 @@ trace_voxel:                           {jump here to trace ray thru voxel at VP}
       if obj_pp^ = last_checks[j] then goto next_obj; {already checked this object ?}
       end;                             {back and check next cached miss}
     checks := checks+1;                {log one more ray/object intersect check}
-    if obj_pp^^.routines_p^.intersect_check^ ( {run object's intersect check routine}
+    if obj_pp^^.class_p^.intersect_check^ ( {run object's intersect check routine}
         ray,                           {the ray to intersect object with}
         obj_pp^^,                      {the object to intersect ray with}
         addr(parms),                   {run time specific parameters}
@@ -968,21 +946,20 @@ begin
   data_p^.box_err_half.z := data_p^.box_err.z / 2.0;
   end;
 {
-****************************************************************************
+********************************************************************************
 *
-*   Subroutine TYPE1_OCTREE_ROUTINES_MAKE (POINTERS)
+*   Subroutine TYPE1_TRI_ROUTINES_MAKE (CLASS)
 *
 *   Fill in the routines block for this class of objects.
 }
 procedure type1_octree_routines_make ( {fill in object routines block}
-  out     pointers: ray_object_routines_t); {block to fill in}
+  out     class: ray_object_class_t);  {block to fill in}
   val_param;
 
 begin
-  pointers.create := addr(type1_octree_create);
-  pointers.version := addr(type1_octree_version);
-  pointers.intersect_check := addr(type1_octree_intersect_check);
-  pointers.intersect_geom := addr(type1_octree_intersect_geom);
-  pointers.intersect_box := addr(type1_octree_intersect_box);
-  pointers.add_child := addr(type1_octree_add_child);
+  class.create := addr(type1_octree_create);
+  class.intersect_check := addr(type1_octree_intersect_check);
+  class.hit_geom := addr(type1_octree_intersect_geom);
+  class.intersect_box := addr(type1_octree_intersect_box);
+  class.add_child := addr(type1_octree_add_child);
   end;

@@ -2,7 +2,8 @@
 *
 *   The high level routines and the basic interfaces between the components are
 *   defined here.  This does not include details of ray geometry, what a color
-*   is, and the like.  No actual ray-tracable objects or shaders are included.
+*   is, and the like.  No ray-tracable objects or shaders are included in this
+*   layer.
 *
 *   Any actual ray tracer implementation must provide objects, shaders, and
 *   define color.  Public symbols for these are intended to be named TYPEn,
@@ -13,10 +14,11 @@
 }
 type
   ray_context_p_t = ^ray_context_t;    {pointer to static context for rays}
+  ray_object_class_p_t = ^ray_object_class_t; {pointer to static obj class info}
 
   ray_object_p_t = ^ray_object_t;
   ray_object_t = record                {one instance of an object}
-    routines_p: ^ray_object_routines_t; {pointer to static object information}
+    class_p: ray_object_class_p_t;     {pointer to static object class info}
     data_p: univ_ptr;                  {pointer to object-specific data for this instance}
     end;
 
@@ -55,18 +57,6 @@ type
     unorm: vect_3d_t;                  {unit normal vector of surface}
     flags: ray_geom_flags_t;           {flags for what really got returned}
     end;
-
-  ray_object_version_t = record        {version and ID information about an object}
-    year: integer32;                   {full 4-digit year of binary build}
-    month: integer32;                  {1-12 month}
-    day: integer32;                    {day within month}
-    hour: integer32;                   {whole hours since midnight (24 hour clock)}
-    minute: integer32;                 {minute within hour}
-    second: integer32;                 {second within minute}
-    version: integer32;                {arbitrary version ID}
-    name: string_var80_t;              {up to 80 character object name}
-    aggregate: boolean;                {true if object can hold other objects}
-    end;
 {
 *   Box descriptor and associated data structures.
 *
@@ -93,16 +83,12 @@ type
       array[1..3] of ray_box_edge_t;
     end;
 {
-*   All the entry points that are pointed to from the OBJECT_ROUTINES block.
+*   All the entry points that are pointed to from the OBJECT_CLASS block.
 }
   ray_object_create_proc_t = ^procedure ( {create a new object}
     in out  object: ray_object_t;      {object instance to be filled in}
     in      gcrea_p: univ_ptr;         {data for creating this object instance}
     out     stat: sys_err_t);          {completion status code}
-    val_param;
-
-  ray_object_version_proc_t = ^procedure ( {return version info of this object}
-    out     version: ray_object_version_t);
     val_param;
 
   ray_object_isect_check_proc_t = ^function ( {check for ray hit this object}
@@ -132,23 +118,27 @@ type
     var     object: ray_object_t);     {child object to add to aggregate object}
     val_param;
 {
-*   Object routines block.
+*   Static object data.
 *
-*   This contains an exhaustive list of all the routines that perform any action
-*   requiring special knowlege about the object.
+*   Each object implementation exports only this structure.  All routines and
+*   other information about the object can be found by examining data in this
+*   structure.
+*
+*   For now the RAY_OBJECT_ROUTINES_MAKE_T entry point needs to be called to
+*   fill in a RAY_OBJECT_CLASS_T structure.  Eventually those should be
+*   statically defined and declared external in the TYPEn include file.
 }
-  ray_object_routines_t = record
-    create: ray_object_create_proc_t;  {create a new object}
-    version: ray_object_version_proc_t; {return version ID of this object}
-    intersect_check: ray_object_isect_check_proc_t; {ray/object hit ?}
-    intersect_geom: ray_object_isect_geom_proc_t; {get detailed hit geometry}
-    intersect_box: ray_object_isect_box_proc_t; {get box/object intersect status}
-    add_child: ray_object_add_child_proc_t; {add child to aggregate object}
+  ray_object_class_t = record          {static info about an object class}
+    create: ray_object_create_proc_t;  {create new instance of this object}
+    intersect_check:                   {intersect object with a ray}
+      ray_object_isect_check_proc_t;
+    hit_geom:                          {get more information about a ray hit}
+      ray_object_isect_geom_proc_t;
+    intersect_box:                     {intersect object with a box}
+      ray_object_isect_box_proc_t;
+    add_child:                         {add child to aggregate obj}
+      ray_object_add_child_proc_t;     {NIL if not aggregate object}
     end;
-
-  ray_object_routines_make_t = ^procedure ( {fill in pointers to obj entry points}
-    out     pointers: ray_object_routines_t); {block to fill in}
-    val_param;
 {
 *   Subroutines.
 }
@@ -164,7 +154,7 @@ function ray_mem_alloc_perm (          {alloc un-releasable mem under ray tracer
   :univ_ptr;                           {pnt to new mem, bombs prog on no mem}
   val_param; extern;
 
-procedure ray_trace (
+procedure ray_trace (                  {resolve the color of ray}
   in out  ray: univ ray_desc_t;        {the ray to trace}
   out     color: univ sys_int_machine_t); {returned color, format defined by TYPEn}
   val_param; extern;

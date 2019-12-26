@@ -22,28 +22,6 @@ type
 {
 ********************************************************************************
 *
-*   Local subroutine TYPE1_SPHERE_VERSION (VERSION)
-*
-*   Return version information obout this class of objects.
-}
-procedure type1_sphere_version (       {return version information about object}
-  out     version: ray_object_version_t); {returned version information}
-  val_param;
-
-begin
-  version.year := 1997;
-  version.month := 1;
-  version.day := 28;
-  version.hour := 14;
-  version.minute := 15;
-  version.second := 0;
-  version.version := 0;
-  version.name := string_v('SPHERE');
-  version.aggregate := false;
-  end;
-{
-********************************************************************************
-*
 *   Local subroutine TYPE1_SPHERE_CREATE (OBJECT, CREA, STAT)
 *
 *   Fill in the new object in OBJECT.  CREA is the user data parameters for this
@@ -541,19 +519,18 @@ begin
 {
 ********************************************************************************
 *
-*   Subroutine TYPE1_SPHERE_ROUTINES_MAKE (POINTERS)
+*   Subroutine TYPE1_TRI_ROUTINES_MAKE (CLASS)
 *
 *   Fill in the routines block for this class of objects.
 }
 procedure type1_sphere_routines_make ( {fill in object routines block}
-  out     pointers: ray_object_routines_t); {block to fill in}
+  out     class: ray_object_class_t);  {block to fill in}
   val_param;
 
 begin
-  pointers.create := addr(type1_sphere_create);
-  pointers.version := addr(type1_sphere_version);
-  pointers.intersect_check := addr(type1_sphere_intersect_check);
-  pointers.intersect_geom := addr(type1_sphere_intersect_geom);
-  pointers.intersect_box := addr(type1_sphere_intersect_box);
-  pointers.add_child := addr(type1_sphere_add_child);
+  class.create := addr(type1_sphere_create);
+  class.intersect_check := addr(type1_sphere_intersect_check);
+  class.hit_geom := addr(type1_sphere_intersect_geom);
+  class.intersect_box := addr(type1_sphere_intersect_box);
+  class.add_child := addr(type1_sphere_add_child);
   end;

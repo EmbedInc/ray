@@ -84,7 +84,7 @@ hit_loop:                              {back here after each new hit}
     return;
     end;
   if not                               {hit nothing, so got to the light source ?}
-      ray2.base.context_p^.top_level_obj_p^.routines_p^.intersect_check^ ( {hit ?}
+      ray2.base.context_p^.top_level_obj_p^.class_p^.intersect_check^ ( {hit ?}
         ray2,                          {the ray descriptor}
         ray2.base.context_p^.top_level_obj_p^, {object to intersect ray with}
         ray2.base.context_p^.object_parms_p, {run time parameters for top level object}
@@ -94,7 +94,7 @@ hit_loop:                              {back here after each new hit}
 {
 *   This light ray hit something on the way to the light source.
 }
-  hit_info.object_p^.routines_p^.intersect_geom^ ( {make valid VISPROP, get SHNORM}
+  hit_info.object_p^.class_p^.hit_geom^ ( {make valid VISPROP, get SHNORM}
     hit_info,                          {info about this intersection}
     [ray_geom_unorm],                  {we only need to know shading normal vector}
     geom_info);                        {returned data}
@@ -146,7 +146,7 @@ begin
     goto leave;
     end;
 
-  hit_info.object_p^.routines_p^.intersect_geom^ ( {get geom info about this hit}
+  hit_info.object_p^.class_p^.hit_geom^ ( {get geom info about this hit}
     hit_info,                          {info about this intersection}
     [ray_geom_unorm, ray_geom_point],  {list of requested info}
     geom_info);                        {returned data}

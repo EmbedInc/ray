@@ -19,7 +19,7 @@ type
     type1_ltype_point_r2_k);           {point light source, 1/r**2 falloff}
 
   type1_ray_p_t = ^type1_ray_t;
-  type1_ray_t = record                 {dynamic ray descriptor}
+  type1_ray_t = record                 {ray descriptor}
     base: ray_desc_t;                  {mandatory ray descriptor entry}
     point: vect_3d_t;                  {ray origin}
     vect: vect_3d_t;                   {DX, DY, DZ unit ray vector}
@@ -36,9 +36,7 @@ type
     alpha: real;                       {0.0 to 1.0 opacity fraction}
     end;
 
-  type1_visprop_p_t =                  {pointer to visual properties block}
-    ^type1_visprop_t;
-
+  type1_visprop_p_t = ^type1_visprop_t;
   type1_visprop_t = record             {visual properties description block}
     back_p: type1_visprop_p_t;         {visual properties of back side, may be NIL}
     emis_red: real;                    {emissive color}
@@ -53,7 +51,6 @@ type
     spec_exp: sys_int_machine_t;       {specular exponent}
     opac_front: real;                  {opacity when facing head on}
     opac_side: real;                   {opacity when at limb curve}
-
     diff_on: boolean;                  {diffuse reflections on/off flag}
     spec_on: boolean;                  {specular reflections on/off flag}
     opac_on: boolean;                  {transparency on/off flag}
@@ -89,14 +86,12 @@ type
         );
     end;
 
+  type1_liparm_p_t = ^type1_liparm_t;
   type1_liparm_t = record              {light source parameters descriptor block}
     n_lights: sys_int_machine_t;       {number of light sources actually defined}
     light:                             {array of all the light sources}
       array[1..type1_max_light_sources_k] of type1_light_t;
     end;
-
-  type1_liparm_p_t =                   {pointer to light source parameters block}
-    ^type1_liparm_t;
 
   type1_hit_geom_p_t = ^type1_hit_geom_t;
   type1_hit_geom_t = record            {TYPE1 minimum hit geometry save block}
@@ -119,7 +114,6 @@ type
     type1_tri_flag_rgb_k,              {explicit diffuse RGB for each vertex}
     type1_tri_flag_alpha_k,            {explicit alpha for each vertex}
     type1_tri_flag_shnorm_k,           {shading normal is present for each vertex}
-
     type1_tri_flag_rgba_k);            {RGBA stored, used internally}
 
   type1_tri_flags_t =                  {all the triangle flags in one set}
@@ -235,36 +229,38 @@ var (ray_type1)
 *
 *   Public entry points.
 *
-*   Entry points for objects.
+*   Entry points for filling in object class static data.
 }
 procedure type1_3dfield_routines_make ( {fill in object routines block}
-  out     pointers: ray_object_routines_t); {block to fill in}
+  out     class: ray_object_class_t);  {block to fill in}
   val_param; extern;
 
 procedure type1_list_routines_make (   {fill in object routines block}
-  out     pointers: ray_object_routines_t); {block to fill in}
+  out     class: ray_object_class_t);  {block to fill in}
   val_param; extern;
 
 procedure type1_octree_routines_make ( {fill in object routines block}
-  out     pointers: ray_object_routines_t); {block to fill in}
+  out     class: ray_object_class_t);  {block to fill in}
   val_param; extern;
 
 procedure type1_octree_data_routines_make ( {fill in object routines block}
-  out     pointers: ray_object_routines_t); {block to fill in}
+  out     class: ray_object_class_t);  {block to fill in}
   val_param; extern;
 
+procedure type1_sphere_routines_make ( {fill in object routines block}
+  out     class: ray_object_class_t);  {block to fill in}
+  val_param; extern;
+
+procedure type1_tri_routines_make (    {fill in object routines block}
+  out     class: ray_object_class_t);  {block to fill in}
+  val_param; extern;
+{
+*   Other object entry points.
+}
 procedure type1_octree_geom (          {back door to stomp on octree geometry}
   in      origin: vect_3d_t;           {most negative corner for all 3 axies}
   in      size: vect_3d_t;             {outer octree dimension for each axis}
   in      object: ray_object_t);       {handle to specific octree object}
-  val_param; extern;
-
-procedure type1_sphere_routines_make ( {fill in object routines block}
-  out     pointers: ray_object_routines_t); {block to fill in}
-  val_param; extern;
-
-procedure type1_tri_routines_make (    {fill in object routines block}
-  out     pointers: ray_object_routines_t); {block to fill in}
   val_param; extern;
 {
 *   Entry points for shaders.
