@@ -23,7 +23,7 @@ type
 
   type1_ray_p_t = ^type1_ray_t;
   type1_ray_t = record                 {data for one ray}
-    base: ray_desc_t;                  {mandatory ray data}
+    base: ray_base_t;                  {mandatory ray data}
     point: vect_3d_t;                  {ray origin}
     vect: vect_3d_t;                   {DX, DY, DZ unit ray vector}
     generation: sys_int_machine_t;     {generation counter (eye ray = 1)}
@@ -108,19 +108,6 @@ type
     liparm_p: type1_liparm_p_t;        {pointer to lightsource block, may = NIL}
     visprop_p: type1_visprop_p_t;      {pointer to VISPROP block, may = NIL}
     end;
-
-var (ray_type1)                        {static data for keeping statistics}
-  checks: sys_int_machine_t;           {number of ray/object intersect checks}
-  hits: sys_int_machine_t;             {number of ray/object hits}
-  total_time: sys_timer_t;             {total program run time}
-  trace_time: sys_timer_t;             {total after starting to trace rays}
-  start_octree_time: sys_timer_t;      {time to init ray entering octree}
-  find_voxel_time: sys_timer_t;        {time to find voxel for given coordinate}
-  subdiv_voxel_time: sys_timer_t;      {all time spent subdividing voxels}
-  trace_voxel_time: sys_timer_t;       {time to check all objects in a voxel}
-  next_coor_time: sys_timer_t;         {time to find coordinate in next voxel}
-  shader_time: sys_timer_t;            {time spent doing shader calculations}
-  sphere_isect_time: sys_timer_t;      {time spent doing sphere intersect checks}
 {
 ********************************************************************************
 *

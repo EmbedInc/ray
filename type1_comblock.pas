@@ -4,4 +4,3 @@ module type1_comblock;
 %include 'ray_type1_2.ins.pas';
 
 define ray_type1;
-define ray_type1_2;

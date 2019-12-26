@@ -22,7 +22,7 @@ type
     data_p: univ_ptr;                  {pointer to object-specific data for this instance}
     end;
 
-  ray_desc_t = record                  {minimum required data for a ray}
+  ray_base_t = record                  {minimum required data for a ray}
     context_p: ray_context_p_t;        {pointer to static context info}
     end;
 
@@ -34,7 +34,7 @@ type
     end;
 
   ray_shader_t = ^procedure (          {resolve color given hit info}
-    in var  ray: univ ray_desc_t;      {the ray that hit the object}
+    in var  ray: univ ray_base_t;      {the ray that hit the object}
     in var  hit_info: ray_hit_info_t;  {saved info about the ray/object intersection}
     out     color: univ sys_int_machine_t); {returned color, defined by TYPEn convention}
 
@@ -85,14 +85,14 @@ type
 {
 *   All the entry points that are pointed to from the OBJECT_CLASS block.
 }
-  ray_object_create_proc_t = ^procedure ( {create a new object}
+  ray_object_create_proc_t = ^procedure ( {create a new object instance}
     in out  object: ray_object_t;      {object instance to be filled in}
     in      gcrea_p: univ_ptr;         {data for creating this object instance}
     out     stat: sys_err_t);          {completion status code}
     val_param;
 
   ray_object_isect_check_proc_t = ^function ( {check for ray hit this object}
-    in out  gray: univ ray_desc_t;     {ray to intersect with object}
+    in out  gray: univ ray_base_t;     {ray to intersect with object}
     in var  object: ray_object_t;      {object to intersect ray with}
     in      gparms_p: univ_ptr;        {pointer to run time TYPEn-specific params}
     out     hit_info: ray_hit_info_t;  {returned intersection info}
@@ -155,6 +155,6 @@ function ray_mem_alloc_perm (          {alloc un-releasable mem under ray tracer
   val_param; extern;
 
 procedure ray_trace (                  {resolve the color of ray}
-  in out  ray: univ ray_desc_t;        {the ray to trace}
+  in out  ray: univ ray_base_t;        {the ray to trace}
   out     color: univ sys_int_machine_t); {returned color, format defined by TYPEn}
   val_param; extern;

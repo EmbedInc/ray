@@ -25,7 +25,7 @@ type
 *
 *   Common block for all TYPE1 routines.
 }
-var (ray_type1_2)
+var (ray_type1)
   mem: array[0..max_mem_index] of char; {scratch area for DAG path and hit blocks}
   next_mem: sys_int_adr_t              {MEM index of start of free area}
     := 0;                              {init to all of MEM is free area}

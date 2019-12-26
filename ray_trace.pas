@@ -15,7 +15,7 @@ define ray_trace;
 %include 'ray2.ins.pas';
 
 procedure ray_trace (
-  in out  ray: univ ray_desc_t;        {the ray to trace}
+  in out  ray: univ ray_base_t;        {the ray to trace}
   out     color: univ sys_int_machine_t); {returned color, format defined by TYPEn}
   val_param;
 

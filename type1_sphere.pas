@@ -63,7 +63,7 @@ begin
 *   detailed information about the intersection geometry.
 }
 function type1_sphere_intersect_check ( {check for ray/object intersection}
-  in out  gray: univ ray_desc_t;       {input ray descriptor}
+  in out  gray: univ ray_base_t;       {input ray descriptor}
   in var  object: ray_object_t;        {input object to intersect ray with}
   in      gparms_p: univ_ptr;          {pointer to run time TYPEn-specific params}
   out     hit_info: ray_hit_info_t;    {handle to routines and data to get hit color}

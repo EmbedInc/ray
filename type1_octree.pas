@@ -137,7 +137,7 @@ begin
 *   detailed information about the intersection geometry.
 }
 function type1_octree_intersect_check ( {check for ray/object intersection}
-  in out  gray: univ ray_desc_t;       {input ray descriptor}
+  in out  gray: univ ray_base_t;       {input ray descriptor}
   in var  object: ray_object_t;        {input object to intersect ray with}
   in      gparms_p: univ_ptr;          {pointer to run time TYPEn-specific params}
   out     hit_info: ray_hit_info_t;    {handle to routines and data to get hit color}
@@ -713,7 +713,6 @@ trace_voxel:                           {jump here to trace ray thru voxel at VP}
     for j := 1 to n_cached do begin    {check the cache of previous object checks}
       if obj_pp^ = last_checks[j] then goto next_obj; {already checked this object ?}
       end;                             {back and check next cached miss}
-    checks := checks+1;                {log one more ray/object intersect check}
     if obj_pp^^.class_p^.intersect_check^ ( {run object's intersect check routine}
         ray,                           {the ray to intersect object with}
         obj_pp^^,                      {the object to intersect ray with}
@@ -725,7 +724,6 @@ trace_voxel:                           {jump here to trace ray thru voxel at VP}
         hit := true;                   {remember that the ray hit something}
         new_mem := next_mem;           {save MEM index after this hit data}
         next_mem := old_mem;           {restore mem index to before hit data}
-        hits := hits+1;                {log one more ray/object hit}
         vp^.hits := vp^.hits + 1;      {one more ray/object hit in this voxel}
         end
       else begin                       {the ray did not hit the object}
