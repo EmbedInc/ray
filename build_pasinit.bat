@@ -10,12 +10,7 @@ call src_get %srcdir% %libname%_type1.ins.pas
 call src_get %srcdir% %libname%_type1_2.ins.pas
 call src_get %srcdir% type1_octree.ins.pas
 
-call src_go %srcdir%
-call src_getfrom sys base.ins.pas
-call src_getfrom sys sys.ins.pas
-call src_getfrom util util.ins.pas
-call src_getfrom string string.ins.pas
-call src_getfrom file file.ins.pas
+call src_getbase
 call src_getfrom vect vect.ins.pas
 
 make_debug debug_switches.ins.pas
